@@ -115,6 +115,64 @@ export type ProviderStats = {
 };
 
 /**
+ * One admin-change entry in the governance log returned by `GET /governance`.
+ *
+ * Every time an admin is added or removed on a contract the indexer appends a
+ * row here, in ledger order, so the UI can reconstruct the full chain of
+ * custody. `txHash` links the step to Stellar Expert (#governance).
+ */
+export type GovernanceChange = {
+  /** Contract address the change was applied to. */
+  contract: string;
+  /** Human-readable label, e.g. `registry`, `voucher`, `receipt`. */
+  contractLabel?: string;
+  /** Address of the admin being added or removed. */
+  admin: string;
+  /** `added` when the admin gained authority, `removed` when it was revoked. */
+  action: 'added' | 'removed' | string;
+  /** Transaction hash that emitted the event; links to Stellar Expert. */
+  txHash: string;
+  /** Ledger close time of the event. */
+  at: string;
+  /** Ledger number. */
+  ledger?: number;
+};
+
+/**
+ * One contract's current governance snapshot.
+ *
+ * `currentAdmins` is the live set; `pendingAdmins` holds addresses that have
+ * been nominated but not yet confirmed (the two-step admin-change protocol
+ * used by the Soroban contracts); `changes` is the full audit trail in
+ * ledger order.
+ */
+export type GovernanceContract = {
+  /** Contract address. */
+  contract: string;
+  /** Human-readable label, e.g. `registry`, `voucher`, `receipt`. */
+  label: string;
+  /** Addresses currently authorised to administer this contract. */
+  currentAdmins: string[];
+  /** Addresses nominated but not yet accepted. */
+  pendingAdmins: string[];
+  /** Full ordered change log for this contract. */
+  changes: GovernanceChange[];
+};
+
+/**
+ * Response shape for `GET /governance`.
+ *
+ * The generated client does not describe this endpoint yet, so the type is
+ * local until the OpenAPI schema is updated. Delete the type and switch to the
+ * generated one once it is available.
+ */
+export type GovernanceResponse = {
+  contracts: GovernanceContract[];
+  /** ISO timestamp of the most recently indexed governance event. */
+  updatedAt?: string | null;
+};
+
+/**
  * Normalises the payload of `GET /vouchers/:id/events` into a plain list.
  *
  * The endpoint is new (backend #13) and its envelope is not settled yet,
@@ -248,4 +306,15 @@ export const api = {
 
   attester: (address: string): Promise<Attester> =>
     client.rawGet<Attester>(`/attesters/${encodeURIComponent(address)}`),
+
+  /**
+   * Contract governance snapshot: who controls each contract, pending admin
+   * nominations, and the full audit trail (`GET /governance`).
+   *
+   * Not in the generated client yet; fetched through `rawGet` with the
+   * documented response envelope. Delete the local type and this comment once
+   * the OpenAPI schema publishes the endpoint.
+   */
+  governance: (): Promise<GovernanceResponse> =>
+    client.rawGet<GovernanceResponse>('/governance'),
 };

@@ -18,6 +18,7 @@ const LINKS = [
   { href: '/clinic', label: 'Clinic desk' },
   { href: '/attest', label: 'Attest' },
   { href: '/faq', label: 'FAQ' },
+  { href: '/governance', label: 'Governance' },
 ] as const;
 
 /**

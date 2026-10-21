@@ -115,5 +115,21 @@
     "fr": "Français",
     "sw": "Kiswahili",
     "select": "Chagua lugha"
+  },
+  "governance": {
+    "title": "Utawala wa mikataba",
+    "description": "Nani anadhibiti kila mkataba na jinsi hiyo ilivyobadilika. Wafadhili wanaweza kuthibitisha ni anwani zipi zinazoweza kutatua migogoro na kuidhinisha kliniki.",
+    "currentAdmins": "Wasimamizi wa sasa",
+    "pendingAdmins": "Wasimamizi wanaongoja",
+    "pendingNote": "Wameteuliwa lakini hawajathibitishwa bado. Itifaki ya usimamizi wa hatua mbili inahitaji msimamizi mpya kuthibitisha kabla ya kuanza kutumika.",
+    "recentChanges": "Mabadiliko ya hivi karibuni",
+    "noChanges": "Hakuna mabadiliko ya utawala yaliyorekodiwa bado.",
+    "noContracts": "Hakuna data ya utawala inayopatikana.",
+    "actionAdded": "aliongezwa",
+    "actionRemoved": "aliondolewa",
+    "viewTx": "Tazama muamala",
+    "updatedAt": "Iliorodheshwa mara ya mwisho",
+    "loadingError": "Imeshindwa kupakia data ya utawala. Kielezo kinaweza kuwa hakipatikani.",
+    "contract": "Mkataba"
   }
 }

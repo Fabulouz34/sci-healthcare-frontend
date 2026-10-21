@@ -115,5 +115,21 @@
     "fr": "Français",
     "sw": "Kiswahili",
     "select": "Choisir la langue"
+  },
+  "governance": {
+    "title": "Gouvernance des contrats",
+    "description": "Qui contrôle chaque contrat et comment cela a changé. Les bailleurs peuvent vérifier quelles adresses peuvent résoudre les litiges et approuver les cliniques.",
+    "currentAdmins": "Administrateurs actuels",
+    "pendingAdmins": "Administrateurs en attente",
+    "pendingNote": "Nominés mais pas encore acceptés. Le protocole d'administration en deux étapes exige que le nouvel administrateur confirme avant d'entrer en vigueur.",
+    "recentChanges": "Changements récents",
+    "noChanges": "Aucun changement de gouvernance enregistré pour le moment.",
+    "noContracts": "Aucune donnée de gouvernance disponible.",
+    "actionAdded": "ajouté",
+    "actionRemoved": "supprimé",
+    "viewTx": "Voir la transaction",
+    "updatedAt": "Dernière indexation",
+    "loadingError": "Impossible de charger les données de gouvernance. L'indexeur est peut-être indisponible.",
+    "contract": "Contrat"
   }
 }

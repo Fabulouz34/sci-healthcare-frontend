@@ -69,6 +69,7 @@ export type BackendState = {
   providerStats?: Record<string, unknown>;
   attesters?: Record<string, unknown>[];
   receipts?: { total: number; totalSpendDisplay: string; receipts: Record<string, unknown>[] };
+  governance?: Record<string, unknown>;
 };
 
 export async function mockBackend(page: Page, state: BackendState): Promise<void> {
@@ -132,6 +133,38 @@ export async function mockBackend(page: Page, state: BackendState): Promise<void
       });
     }
 
+    if (parts[0] === 'governance') {
+      if (state.governance) return json(state.governance);
+      return json({
+        contracts: [
+          {
+            contract: 'CBPUQN6CNJCNGPKNEXB7UM4T7RINKQB7HQI5CXEOSQ5EFRHE4G4VKPSQ',
+            label: 'voucher',
+            currentAdmins: ['GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'],
+            pendingAdmins: [],
+            changes: [
+              {
+                contract: 'CBPUQN6CNJCNGPKNEXB7UM4T7RINKQB7HQI5CXEOSQ5EFRHE4G4VKPSQ',
+                contractLabel: 'voucher',
+                admin: 'GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN',
+                action: 'added',
+                txHash: 'abc123def456abc123def456abc123def456abc123def456abc123def4560001',
+                at: '2026-01-10T12:00:00.000Z',
+                ledger: 1000,
+              },
+            ],
+          },
+          {
+            contract: 'CAMU635NRFEHATJ6MTY5SI43IAZ43KHPFXAQDQAST2AHKCHLSGWHVE4V',
+            label: 'registry',
+            currentAdmins: ['GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN'],
+            pendingAdmins: [],
+            changes: [],
+          },
+        ],
+        updatedAt: '2026-06-15T10:00:00.000Z',
+      });
+    }
     if (parts[0] === 'receipts') {
       return json(
         state.receipts ?? { total: 0, totalSpendDisplay: '0.00', receipts: [] },

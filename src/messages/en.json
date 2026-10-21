@@ -115,5 +115,21 @@
     "fr": "Français",
     "sw": "Kiswahili",
     "select": "Select language"
+  },
+  "governance": {
+    "title": "Contract governance",
+    "description": "Who controls each contract, and how that changed. Funders can verify which addresses can resolve disputes and approve clinics.",
+    "currentAdmins": "Current admins",
+    "pendingAdmins": "Pending admins",
+    "pendingNote": "Nominated but not yet accepted. The two-step admin protocol requires the new admin to confirm before taking effect.",
+    "recentChanges": "Recent changes",
+    "noChanges": "No governance changes recorded yet.",
+    "noContracts": "No governance data available.",
+    "actionAdded": "added",
+    "actionRemoved": "removed",
+    "viewTx": "View transaction",
+    "updatedAt": "Last indexed",
+    "loadingError": "Could not load governance data. The indexer may be unavailable.",
+    "contract": "Contract"
   }
 }
