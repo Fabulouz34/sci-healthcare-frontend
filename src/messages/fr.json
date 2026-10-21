@@ -85,7 +85,14 @@
     "serviceNote": "Utilisez une catégorie de service générale, jamais un diagnostic. Les codes sont publics. Un nouveau prix s'applique aux bons financés à partir de maintenant.",
     "incomingVouchers": "Bons entrants",
     "noIncoming": "Aucun bon pour cette clinique pour le moment.",
-    "connectWallet": "Connectez le portefeuille de la clinique pour gérer ce bureau."
+    "connectWallet": "Connectez le portefeuille de la clinique pour gérer ce bureau.",
+    "settleAll": "Tout régler ({count})",
+    "settlingCount": "Règlement {done}/{total}…",
+    "settlingVoucher": "Versement du bon #{id}…",
+    "settledOf": "{done} sur {total} réglés",
+    "settleAllProgress": "Règlement des bons échus",
+    "settledSummary": "Paiement versé pour",
+    "settleFailedSummary": "Non réglé :"
   },
   "scanner": {
     "title": "Scanner le QR du bon patient",

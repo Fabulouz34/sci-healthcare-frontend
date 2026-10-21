@@ -85,7 +85,14 @@
     "serviceNote": "Use a coarse service category, never a diagnosis. Codes are public. A new price applies to vouchers funded from now on.",
     "incomingVouchers": "Incoming vouchers",
     "noIncoming": "No vouchers for this clinic yet.",
-    "connectWallet": "Connect the clinic's wallet to manage this desk."
+    "connectWallet": "Connect the clinic's wallet to manage this desk.",
+    "settleAll": "Settle all ({count})",
+    "settlingCount": "Settling {done}/{total}…",
+    "settlingVoucher": "Releasing payment for voucher #{id}…",
+    "settledOf": "{done} of {total} settled",
+    "settleAllProgress": "Settling due vouchers",
+    "settledSummary": "Payment released for",
+    "settleFailedSummary": "Not settled:"
   },
   "scanner": {
     "title": "Scan patient voucher QR",

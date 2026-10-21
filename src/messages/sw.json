@@ -85,7 +85,14 @@
     "serviceNote": "Tumia kategoria ya jumla ya huduma, kamwe usiweke utambuzi wa ugonjwa. Misimbo iko wazi kwa umma. Bei mpya inatumika kwa vocha zinazofadhiliwa kuanzia sasa.",
     "incomingVouchers": "Vocha zinazoingia",
     "noIncoming": "Bado hakuna vocha kwa kliniki hii.",
-    "connectWallet": "Unganisha pochi ya kliniki ili kusimamia dawati hili."
+    "connectWallet": "Unganisha pochi ya kliniki ili kusimamia dawati hili.",
+    "settleAll": "Lipa zote ({count})",
+    "settlingCount": "Inalipa {done}/{total}…",
+    "settlingVoucher": "Inatoa malipo ya vocha #{id}…",
+    "settledOf": "{done} kati ya {total} zimelipwa",
+    "settleAllProgress": "Inalipa vocha zilizostahili",
+    "settledSummary": "Malipo yametolewa kwa",
+    "settleFailedSummary": "Haikulipwa:"
   },
   "scanner": {
     "title": "Changanua QR ya vocha ya mgonjwa",

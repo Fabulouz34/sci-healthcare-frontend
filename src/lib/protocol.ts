@@ -1,3 +1,4 @@
+import { batchSettleMethod } from './batch-settle';
 import { config, isTestnet } from './config';
 import {
   FaucetClient,
@@ -229,6 +230,71 @@ export const voucher = {
     return invokeContract(config.contracts.voucher, 'settle', args, caller, sign);
   },
 
+  /**
+   * Settles several vouchers, using the contract's own batch method when its
+   * spec exposes one (contracts #4) and otherwise writing them one by one.
+   *
+   * Only the ids the caller passes are touched; the caller is responsible for
+   * filtering to `isSettleable` (see `@/lib/batch-settle`). Progress is
+   * reported per voucher so the desk can show how far it has got, and a
+   * failure is collected instead of aborting the run: one voucher the
+   * contract rejects must not strand the others. `invoke` simulates first, so
+   * each write is rejected before a signature is requested.
+   *
+   * If the batch write itself fails the fallback settles each remaining
+   * voucher individually. A failed batch cannot have settled any of them —
+   * one transaction is atomic — and a voucher that did land in a batch whose
+   * confirmation timed out answers `InvalidStatus` on the retry, which is
+   * reported as a failure rather than silently counted twice.
+   */
+  async settleMany(
+    caller: string,
+    voucherIds: string[],
+    sign: SignFn,
+    onProgress?: (settled: number, total: number, id: string) => void,
+  ): Promise<{ settled: string[]; failed: Array<{ id: string; error: unknown }> }> {
+    const settled: string[] = [];
+    const failed: Array<{ id: string; error: unknown }> = [];
+    const total = voucherIds.length;
+    if (total === 0) return { settled, failed };
+
+    const batch = total > 1 ? contractBatchSettle() : null;
+    if (batch) {
+      try {
+        const client = getVoucherClient();
+        const args = client.spec.funcArgsToScVals(batch.method, {
+          [batch.argName]: voucherIds.map((id) => BigInt(id)),
+        });
+        await invokeContract(
+          config.contracts.voucher,
+          batch.method,
+          args,
+          caller,
+          sign,
+        );
+        for (const id of voucherIds) {
+          settled.push(id);
+          onProgress?.(settled.length, total, id);
+        }
+        return { settled, failed };
+      } catch {
+        // The spec advertises a batch method the deployed contract rejects.
+        // Nothing was settled, so settle each voucher the ordinary way.
+      }
+    }
+
+    for (const id of voucherIds) {
+      try {
+        await this.settle(caller, id, sign);
+        settled.push(id);
+        onProgress?.(settled.length, total, id);
+      } catch (err) {
+        failed.push({ id, error: err });
+      }
+    }
+    return { settled, failed };
+  },
+
   /** refund(voucher_id) — permissionless. */
   async refund(caller: string, voucherId: string, sign: SignFn) {
     const client = getVoucherClient();
@@ -245,6 +311,20 @@ export const voucher = {
     return readContract<[bigint, bigint]>(config.contracts.voucher, 'quote', args);
   },
 };
+
+/**
+ * The batch-settle method of the deployed voucher contract, with the name of
+ * its voucher-id argument read off the spec, or null when it only offers the
+ * single `settle`. Contracts #4 is an optional upgrade, so this is asked of
+ * the spec every time rather than assumed.
+ */
+function contractBatchSettle(): { method: string; argName: string } | null {
+  const spec = getVoucherClient().spec;
+  const method = batchSettleMethod(spec.funcs().map((f) => String(f.name)));
+  if (!method) return null;
+  const [input] = spec.getFunc(method).inputs;
+  return input ? { method, argName: String(input.name) } : null;
+}
 
 /** ProviderStatus discriminants in the registry contract, in order. */
 const PROVIDER_STATUSES = ['Pending', 'Active', 'Suspended'] as const;

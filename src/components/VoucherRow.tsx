@@ -42,6 +42,7 @@ export function VoucherRow({
   onDone,
   summary = true,
   now: nowProp,
+  disabled = false,
 }: {
   v: Voucher;
   actions: Action[];
@@ -50,6 +51,11 @@ export function VoucherRow({
   summary?: boolean;
   /** Optional current time in ms (e.g., from parent using useNow). Falls back to internal useNow. */
   now?: number;
+  /**
+   * True while the page is settling several vouchers: the batch is already
+   * writing, so a second write on the same row would only fail.
+   */
+  disabled?: boolean;
 }) {
   const { address, signTransaction, connect } = useWallet();
   const nowInternal = useNow();
@@ -211,7 +217,7 @@ export function VoucherRow({
             <Button
               key={a}
               variant={a === 'dispute' ? 'danger' : a === 'settle' ? 'primary' : 'ghost'}
-              disabled={busy !== null || reconciling !== null}
+              disabled={disabled || busy !== null || reconciling !== null}
               onClick={() => {
                 if (a === 'dispute') setDisputing(true);
                 else if (a === 'attest') setAttesting(true);
@@ -246,7 +252,7 @@ export function VoucherRow({
           <>
             <Button
               variant="danger"
-              disabled={busy !== null}
+              disabled={disabled || busy !== null}
               onClick={() => void run('dispute')}
             >
               {busy === 'dispute' ? 'Confirming…' : 'Open dispute'}
@@ -295,7 +301,7 @@ export function VoucherRow({
         actions={
           <>
             <Button
-              disabled={busy !== null}
+              disabled={disabled || busy !== null}
               onClick={() => void run('attest')}
             >
               {busy === 'attest' ? 'Confirming…' : 'Confirm'}

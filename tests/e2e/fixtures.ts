@@ -96,6 +96,16 @@ export const CLAIMED_VOUCHER = (id: string) =>
     refundableAt: '2026-07-01T00:00:00.000Z',
   });
 
+/** Attested and past its dispute window: the clinic can release payment. */
+export const SETTLEABLE_VOUCHER = (id: string) =>
+  baseVoucher(id, {
+    status: 'Attested',
+    claimedAt: '2026-05-22T10:00:00.000Z',
+    attestedAt: '2026-05-23T10:00:00.000Z',
+    disputeDeadline: '2026-05-30T10:00:00.000Z',
+    isSettleable: true,
+  });
+
 /** Expired and unclaimed: the funder can take it back. */
 export const REFUNDABLE_VOUCHER = (id: string) =>
   baseVoucher(id, {
