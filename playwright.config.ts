@@ -78,6 +78,15 @@ export default defineConfig({
       NEXT_PUBLIC_USDC_CONTRACT_ID: E2E_CONTRACTS.usdc,
       NEXT_PUBLIC_FAUCET_CONTRACT_ID: E2E_CONTRACTS.faucet,
       NEXT_PUBLIC_USDC_ISSUER: E2E_CONTRACTS.usdcIssuer,
+      NEXT_PUBLIC_SEP24_ANCHORS: JSON.stringify([
+        {
+          name: 'Test clinic anchor',
+          domain: 'anchor.example',
+          countries: ['NG'],
+          assetCode: 'USDC',
+          assetIssuer: E2E_CONTRACTS.usdcIssuer,
+        },
+      ]),
       // Enables the analytics branch under test; tests/analytics-guard.ts
       // stops the script request itself from leaving the sandbox.
       NEXT_PUBLIC_PLAUSIBLE_DOMAIN: 'test.sci-healthcare.example',

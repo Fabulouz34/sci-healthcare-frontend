@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { blockAnalytics } from '../analytics-guard';
+import { E2E_CONTRACTS } from '../e2e/contracts';
 import {
   blockRpc,
   CLINIC_ADDRESS,
@@ -54,6 +55,39 @@ test('clinic desk — disconnected', async ({ page }) => {
   await expect(page.getByText('Connect the clinic')).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot('clinic-desk.png');
+});
+
+test('clinic desk — SEP-24 cash-out handoff', async ({ page }) => {
+  await page.addInitScript(
+    `window.__SCI_MOCK_WALLET__ = { address: '${CLINIC_ADDRESS}' };
+     window.__SCI_MOCK_RPC__ = { calls: [], args: [] };`,
+  );
+  await page.route('https://anchor.example/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/.well-known/stellar.toml') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/plain',
+        body: `NETWORK_PASSPHRASE = "Test SDF Network ; September 2015"\nSIGNING_KEY = "GCSGSR6KQQ5BP2FXVPWRL6SWPUSFWLVONLIBJZUKTVQB5FYJFVL6XOXE"\nWEB_AUTH_ENDPOINT = "https://anchor.example/auth"\nTRANSFER_SERVER_SEP0024 = "https://anchor.example/sep24"\n\n[[CURRENCIES]]\ncode = "USDC"\nissuer = "${E2E_CONTRACTS.usdcIssuer}"`,
+      });
+    }
+    if (url.pathname === '/sep24/info') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ withdraw: { USDC: { enabled: true, min_amount: 1, max_amount: 100 } } }),
+      });
+    }
+    return route.fulfill({ status: 404, body: '{}' });
+  });
+
+  await page.goto('/clinic');
+  await expect(page.getByRole('heading', { name: 'Local cash-out' })).toBeVisible();
+  await page.getByLabel('Anchor').selectOption('anchor.example');
+  await expect(page.getByText('Anchor limits: 1–100 USDC.')).toBeVisible();
+  await expect(page.getByText(/may require identity verification \(KYC\)/)).toBeVisible();
+  await settle(page);
+  await expect(page.getByRole('region', { name: 'Local cash-out' })).toHaveScreenshot('clinic-cashout.png');
 });
 
 test('attest — disconnected', async ({ page }) => {

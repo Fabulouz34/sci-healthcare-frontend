@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import bundleAnalyzer from '@next/bundle-analyzer';
+import { parseSep24Anchors } from './src/lib/sep24-config';
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -135,6 +136,18 @@ function configProblems(env: NodeJS.ProcessEnv): string[] {
     }
   }
 
+  if (env.NEXT_PUBLIC_SEP24_ANCHORS?.trim()) {
+    try {
+      parseSep24Anchors(env.NEXT_PUBLIC_SEP24_ANCHORS);
+    } catch (error) {
+      problems.push(
+        error instanceof Error
+          ? error.message
+          : 'NEXT_PUBLIC_SEP24_ANCHORS is invalid.',
+      );
+    }
+  }
+
   return problems;
 }
 
@@ -231,6 +244,13 @@ function contentSecurityPolicy(): string {
   const plausible = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN
     ? 'https://plausible.io'
     : null;
+  let anchorOrigins: string[] = [];
+  try {
+    anchorOrigins = parseSep24Anchors(process.env.NEXT_PUBLIC_SEP24_ANCHORS)
+      .flatMap(({ domain }) => [`https://${domain}`, `https://*.${domain}`]);
+  } catch {
+    // The production config validator reports malformed anchor config.
+  }
 
   const directives: Record<string, (string | false | null | undefined)[]> = {
     'default-src': ["'self'"],
@@ -261,6 +281,7 @@ function contentSecurityPolicy(): string {
       WALLETS.xbull,
       plausible,
       sentry,
+      ...anchorOrigins,
       isDev && 'ws:',
     ],
     // Wallet signing happens in a popup (window.open), never an iframe, so

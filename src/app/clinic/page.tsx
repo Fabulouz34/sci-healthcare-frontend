@@ -14,6 +14,7 @@ import { QrScannerModal } from '@/components/QrScannerModal';
 import { VoucherRow } from '@/components/VoucherRow';
 import { useToast } from '@/components/Toast';
 import { Button, Card, Empty, ExplorerLink } from '@/components/ui';
+import { Sep24Cashout } from '@/components/Sep24Cashout';
 
 import { useLocaleContext } from '@/i18n/LocaleContext';
 
@@ -302,6 +303,14 @@ export default function ClinicDeskPage() {
             {busy ? t('common.confirming') : editing ? t('clinic.updateService', { code }) : t('clinic.listService')}
           </Button>
         </Card>
+      )}
+
+      {standing === 'Active' && provider?.country && (
+        <Sep24Cashout
+          account={address}
+          country={provider.country}
+          signTransaction={signTransaction}
+        />
       )}
 
       <section className="space-y-3">

@@ -79,14 +79,17 @@ test('the policy names only the origins the app needs', async ({ page }) => {
   // Map tiles, and the analytics origin the test build enables.
   expect(csp).toContain('https://tile.openstreetmap.org');
   expect(csp).toContain('https://plausible.io');
+  expect(csp).toContain('https://anchor.example');
+  expect(csp).toContain('https://*.anchor.example');
 
-  // Nothing is open by default, and nothing is wildcarded.
+  // Nothing is open by default; the only wildcard is scoped to the
+  // explicitly configured anchor domain and its subdomains.
   expect(csp).toContain("default-src 'self'");
   expect(csp).toContain("frame-ancestors 'none'");
   expect(csp).toContain("object-src 'none'");
   expect(csp).toContain("base-uri 'self'");
   expect(csp).toContain("form-action 'self'");
-  expect(csp).not.toContain('*');
+  expect(csp).not.toMatch(/(?:^|[;\s])\*(?=[;\s]|$)/);
 
   // Companion headers.
   expect(headers['x-frame-options']).toBe('DENY');
