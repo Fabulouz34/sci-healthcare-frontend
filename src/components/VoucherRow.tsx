@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { api, type Voucher } from '@/lib/api';
-import { formatDate, formatUsdc, timeUntil, timeSince } from '@/lib/amounts';
+import { formatDate, formatUsdc, timeUntil, timeSince, toAmountInput } from '@/lib/amounts';
 import { trackEvent, type AnalyticsEvent } from '@/lib/analytics';
 import { explorerTx } from '@/lib/config';
 import { DISPUTE_REASONS, disputeReasonLabel, type DisputeReasonCode } from '@/lib/disputes';
@@ -161,6 +161,12 @@ export function VoucherRow({
     },
   }));
 
+  const fundAgainParams = new URLSearchParams({
+    service: String(v.serviceCode),
+    amount: toAmountInput(v.amount),
+  });
+  const fundAgainHref = `/clinics/${encodeURIComponent(v.provider.address)}?${fundAgainParams}`;
+
   return (
     // Without the summary, the first hint or button row sits at the top.
     <Card className={summary ? 'p-5' : 'p-5 [&>:first-child]:mt-0'}>
@@ -193,6 +199,13 @@ export function VoucherRow({
           </div>
         </div>
       )}
+
+      <Link
+        href={fundAgainHref}
+        className="mt-3 inline-flex items-center rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium text-[var(--color-brand)] transition hover:bg-[var(--color-canvas)]"
+      >
+        Fund again
+      </Link>
 
       {v.status === 'Attested' && v.disputeDeadline && !v.isSettleable && (
         <p className="mt-3 text-xs text-[var(--color-ink-soft)]">

@@ -32,14 +32,33 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
   const names = useNameIndex();
   const [copied, setCopied] = useState(false);
 
+  function voucherShareMessage() {
+    const url = new URL(`/vouchers/${id}`, window.location.origin).toString();
+    return `A healthcare voucher is ready for you: ${url}`;
+  }
+
   async function copyLink() {
     try {
-      const url = typeof window !== 'undefined' ? window.location.href : '';
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(voucherShareMessage());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Clipboard write failed
+    }
+  }
+
+  async function shareVoucher() {
+    const message = voucherShareMessage();
+    if (typeof navigator.share !== 'function') {
+      await copyLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: 'Healthcare voucher', text: message });
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        await copyLink();
+      }
     }
   }
 
@@ -74,6 +93,8 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
     service: v.serviceLabel ?? `Service ${v.serviceCode}`,
     clinic: v.provider.name,
   });
+  const shareMessage = voucherShareMessage();
+  const encodedShareMessage = encodeURIComponent(shareMessage);
 
   return (
     <div className="voucher-print-page space-y-6 print:space-y-3">
@@ -111,6 +132,28 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
                 </>
               )}
             </button>
+            <button
+              type="button"
+              onClick={() => void shareVoucher()}
+              className="inline-flex items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-ink)]"
+              aria-label="Share voucher"
+            >
+              Share
+            </button>
+            <a
+              href={`https://wa.me/?text=${encodedShareMessage}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-ink)]"
+            >
+              WhatsApp
+            </a>
+            <a
+              href={`sms:?body=${encodedShareMessage}`}
+              className="inline-flex items-center rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-ink)]"
+            >
+              SMS
+            </a>
           </div>
           <h1 className="mt-1 text-xl font-semibold tracking-tight">
             {v.serviceLabel ?? `Service ${v.serviceCode}`}

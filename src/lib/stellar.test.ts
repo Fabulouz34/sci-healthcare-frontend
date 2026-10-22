@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getAccountSpendableBalance } from './stellar';
+import { getAccountSpendableBalance, simulateContractFee } from './stellar';
 
 describe('getAccountSpendableBalance', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it('returns a zeroed balance when Horizon omits the native balance entry', async () => {
@@ -42,5 +43,20 @@ describe('getAccountSpendableBalance', () => {
       spendable: 0,
       isLowForFees: true,
     });
+  });
+});
+
+describe('simulateContractFee', () => {
+  it('returns the mocked resource fee and records a simulation, not a write', async () => {
+    const calls: unknown[] = [];
+    vi.stubGlobal('window', {
+      __SCI_MOCK_RPC__: { calls, args: [] },
+    });
+
+    await expect(simulateContractFee('CCONTRACT', 'create_voucher', [], 'GACCOUNT'))
+      .resolves.toBe(100_000n);
+    expect(calls).toEqual([
+      { kind: 'simulate', contractId: 'CCONTRACT', method: 'create_voucher' },
+    ]);
   });
 });

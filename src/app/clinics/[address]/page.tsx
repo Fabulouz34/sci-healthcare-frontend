@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { use, useEffect, useMemo, useState } from 'react';
 
-import { notFound } from 'next/navigation';
+import { notFound, useSearchParams } from 'next/navigation';
 
 import { ApiError, type Service } from '@/lib/api';
 import {
@@ -67,15 +67,25 @@ export default function ClinicPage({
 }) {
   const { address } = use(params);
   const { address: wallet, signTransaction, connect } = useWallet();
+  const searchParams = useSearchParams();
 
   const { provider, error: loadError, rawError: loadRawError } = useProvider(address);
+  const serviceParam = searchParams.get('service');
+  const prefilledServiceCode = serviceParam && /^\d+$/.test(serviceParam)
+    ? Number(serviceParam)
+    : null;
+  const prefilledService = provider?.services.find(
+    (service) => service.code === prefilledServiceCode && service.active !== false,
+  );
   // Until the funder changes the basket, the clinic's first active service
   // is selected, as before baskets existed: most funders pay for one thing.
   const [selectedCodesOverride, setSelectedCodesOverride] = useState<number[] | null>(null);
   const firstActive = provider?.services.find((s) => s.active !== false) ?? null;
   const selectedCodes = useMemo(
-    () => selectedCodesOverride ?? (firstActive ? [firstActive.code] : []),
-    [selectedCodesOverride, firstActive],
+    () =>
+      selectedCodesOverride ??
+      (prefilledService ? [prefilledService.code] : firstActive ? [firstActive.code] : []),
+    [selectedCodesOverride, prefilledService, firstActive],
   );
   const setSelectedCodes = (update: (current: number[]) => number[]) =>
     setSelectedCodesOverride(update(selectedCodes));
@@ -100,10 +110,20 @@ export default function ClinicPage({
       ),
     [selectedServices],
   );
+    const requestedAmount =
+      selected && prefilledServiceCode === selected.code
+        ? searchParams.get('amount')
+        : null;
+    const validPrefilledAmount =
+      selected &&
+      requestedAmount !== null &&
+      validateAmountInput(requestedAmount, BigInt(selected.price)) === null
+        ? requestedAmount
+        : null;
   const amount =
     amountOverride ??
     (selected
-      ? toAmountInput(selected.price)
+        ? validPrefilledAmount ?? toAmountInput(selected.price)
       : selectedServices.length > 0
         ? toAmountInput(String(selectionTotal))
         : '');
@@ -158,7 +178,7 @@ export default function ClinicPage({
 
   // The amount as base units, or null while the field is not a number.
   const baseAmount = useMemo(() => {
-    if (selectedServices.length > 0) return selectionTotal;
+    if (selectedServices.length > 1) return selectionTotal;
     try {
       const v = toBaseUnits(amount);
       return v > 0n ? v : null;
@@ -199,6 +219,70 @@ export default function ClinicPage({
   }, [baseAmount]);
   const currentQuote = quote && quote.amount === baseAmount ? quote : null;
   const canSwapWithXlm = isTestnet && Boolean(config.usdcIssuer);
+  const fundingExpiresAt = expiresAtFor(expiryChoice, customExpiry);
+
+  const feeRequestKey =
+    wallet && baseAmount !== null && !amountError && selectedServices.length > 0
+      ? `${wallet}:${selectedServices.map((service) => `${service.code}:${selectedServices.length === 1 ? baseAmount : service.price}`).join(',')}:${expiryChoice}:${customExpiry}`
+      : null;
+  const [networkFee, setNetworkFee] = useState<{
+    key: string;
+    fee: bigint | null;
+    failed: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!wallet || !feeRequestKey || baseAmount === null) return;
+
+    let ignore = false;
+    const timer = setTimeout(async () => {
+      try {
+        const expiresAt = expiresAtFor(expiryChoice, customExpiry);
+        if (expiresAt === null) {
+          setNetworkFee({ key: feeRequestKey, fee: null, failed: true });
+          return;
+        }
+        const estimates = await Promise.all(
+          selectedServices.map((service) =>
+            voucher.estimateCreateFee({
+              funder: wallet,
+              beneficiaryRef: '00'.repeat(32),
+              provider: address,
+              serviceCode: service.code,
+              amount:
+                selectedServices.length === 1 ? baseAmount : BigInt(service.price),
+              expiresAt,
+            }),
+          ),
+        );
+        if (!ignore) {
+          setNetworkFee({
+            key: feeRequestKey,
+            fee: estimates.reduce((total, estimate) => total + estimate, 0n),
+            failed: false,
+          });
+        }
+      } catch {
+        if (!ignore) setNetworkFee({ key: feeRequestKey, fee: null, failed: true });
+      }
+    }, 350);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [address, baseAmount, customExpiry, expiryChoice, feeRequestKey, selectedServices, wallet]);
+
+  const currentNetworkFee = networkFee?.key === feeRequestKey ? networkFee : null;
+  const networkFeeText = !wallet
+    ? 'Connect wallet to estimate'
+    : !feeRequestKey
+      ? 'Enter a valid amount to estimate'
+      : currentNetworkFee?.failed
+        ? 'Estimate unavailable'
+        : currentNetworkFee?.fee !== null && currentNetworkFee?.fee !== undefined
+          ? `${formatXlm(currentNetworkFee.fee)} XLM`
+          : 'Estimating…';
 
   useEffect(() => {
     let ignore = false;
@@ -250,9 +334,6 @@ export default function ClinicPage({
   // reads the voucher's last valid day rather than the picker's raw value.
   const customExpiresAt =
     expiryChoice === 'custom' ? expiresAtFor('custom', customExpiry) : null;
-  // Shared by both funding paths: the local wallet signer and the SEP-7 link
-  // must put the same expiry on chain.
-  const fundingExpiresAt = expiresAtFor(expiryChoice, customExpiry);
   const expirySummary =
     expiryChoice === 'custom'
       ? customExpiresAt === null
@@ -654,6 +735,9 @@ export default function ClinicPage({
                   {formatUsdc(currentQuote.fee)} protocol fee. Refunds are free.
                 </span>
               )}
+              <span role="status" className="mt-1 block text-xs text-[var(--color-ink-soft)]">
+                Estimated network fee: {networkFeeText}
+              </span>
               {xlmSwapQuote && (
                 <span className="mt-2 block rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                   XLM swap: {formatXlm(xlmSwapQuote.xlmCost)} XLM quoted to buy{' '}
@@ -802,6 +886,10 @@ export default function ClinicPage({
               <div className="flex items-start justify-between gap-3">
                 <dt className="text-[var(--color-ink-soft)]">Protocol fee</dt>
                 <dd className="mono text-end font-medium">${reviewFee}</dd>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-[var(--color-ink-soft)]">Network fee</dt>
+                <dd className="mono text-end font-medium">{networkFeeText}</dd>
               </div>
               <div className="flex items-start justify-between gap-3">
                 <dt className="text-[var(--color-ink-soft)]">Clinic payout</dt>

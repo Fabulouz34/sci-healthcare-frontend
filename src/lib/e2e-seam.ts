@@ -15,7 +15,7 @@
  */
 
 export type MockRpcCall = {
-  kind: 'invoke' | 'read';
+  kind: 'invoke' | 'read' | 'simulate';
   contractId: string;
   method: string;
 };
