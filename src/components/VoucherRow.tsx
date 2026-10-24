@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { api, type Voucher } from '@/lib/api';
 import { formatDate, formatUsdc, timeUntil, timeSince } from '@/lib/amounts';
@@ -17,6 +17,7 @@ import { useWallet } from '@/lib/wallet';
 import { Button, Card, ExplorerLink, InfoTip, Modal, StatusBadge } from './ui';
 import { AddressName } from './AddressName';
 import { useToast } from './Toast';
+import { VerifyPatient } from './VerifyPatient';
 import { availableActions, type VoucherAction as Action } from '@/lib/voucher-actions';
 
 /** Funnel step per contract write. Names only — never any properties. */
@@ -36,6 +37,13 @@ function isUrgent(iso: string | Date | null, now: number): boolean {
   return ms > 0 && ms <= 48 * 60 * 60 * 1000;
 }
 
+/**
+ * Lets a list drive a row from the keyboard (#160). `startAttest` opens the
+ * same confirmation modal the button does — it never submits on its own —
+ * and returns false when attesting is not on offer right now.
+ */
+export type VoucherRowHandle = { startAttest: () => boolean };
+
 export function VoucherRow({
   v,
   actions,
@@ -43,6 +51,8 @@ export function VoucherRow({
   summary = true,
   now: nowProp,
   disabled = false,
+  ref,
+  requirePatientMatch = false,
 }: {
   v: Voucher;
   actions: Action[];
@@ -56,6 +66,13 @@ export function VoucherRow({
    * writing, so a second write on the same row would only fail.
    */
   disabled?: boolean;
+  ref?: Ref<VoucherRowHandle>;
+  /**
+   * Hold the claim button until the patient's reference and key match this
+   * voucher (#33). Off by default: the check is still offered, but a clinic
+   * can claim without it. Point-of-care desks pass `true`.
+   */
+  requirePatientMatch?: boolean;
 }) {
   const { address, signTransaction, connect } = useWallet();
   const nowInternal = useNow();
@@ -76,6 +93,12 @@ export function VoucherRow({
   const [disputing, setDisputing] = useState(false);
   const [attesting, setAttesting] = useState(false);
   const [reason, setReason] = useState<DisputeReasonCode>(DISPUTE_REASONS[0].code);
+  // Patient check (#33): keep which voucher matched, never the typed values.
+  // Keying the match by voucher means a changed row cannot inherit a match.
+  const [verifying, setVerifying] = useState(false);
+  const [verifiedFor, setVerifiedFor] = useState<string | null>(null);
+  const verificationKey = `${v.id}:${v.beneficiaryRef}`;
+  const patientVerified = verifiedFor === verificationKey;
 
   async function run(action: Action) {
     if (!address) return void connect();
@@ -136,6 +159,14 @@ export function VoucherRow({
     actions,
   );
 
+  useImperativeHandle(ref, () => ({
+    startAttest: () => {
+      if (!available.includes('attest') || busy !== null || reconciling !== null) return false;
+      setAttesting(true);
+      return true;
+    },
+  }));
+
   return (
     // Without the summary, the first hint or button row sits at the top.
     <Card className={summary ? 'p-5' : 'p-5 [&>:first-child]:mt-0'}>
@@ -158,7 +189,7 @@ export function VoucherRow({
               {v.serviceLabel ?? `Service ${v.serviceCode}`} · funded {formatDate(v.createdAt)}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-end">
             <div className="mono text-lg font-semibold">${formatUsdc(v.amount)}</div>
             {v.status === 'Settled' && v.settledNet && (
               <div className="text-xs text-[var(--color-ink-soft)]">
@@ -173,7 +204,7 @@ export function VoucherRow({
         <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
           Dispute window closes in {timeUntil(v.disputeDeadline, now)} — settles after
           that.
-          <InfoTip content="Anyone can dispute before the window closes. After it closes, anyone can release the payment to the clinic." />
+          <InfoTip content="The funder can dispute before the window closes. After it closes, anyone can release the payment to the clinic." />
         </p>
       )}
       {v.status === 'Funded' && (
@@ -218,6 +249,11 @@ export function VoucherRow({
               key={a}
               variant={a === 'dispute' ? 'danger' : a === 'settle' ? 'primary' : 'ghost'}
               disabled={disabled || busy !== null || reconciling !== null}
+              disabled={
+                busy !== null ||
+                reconciling !== null ||
+                (a === 'claim' && requirePatientMatch && !patientVerified)
+              }
               onClick={() => {
                 if (a === 'dispute') setDisputing(true);
                 else if (a === 'attest') setAttesting(true);
@@ -227,6 +263,49 @@ export function VoucherRow({
               {busy === a ? 'Confirming…' : reconciling === a ? 'Updating…' : LABELS[a]}
             </Button>
           ))}
+        </div>
+      )}
+
+      {available.includes('claim') && (
+        <div className="mt-4 rounded-lg border border-[var(--color-line)] bg-[var(--color-canvas)] p-4">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h4 className="flex items-center gap-2 text-sm font-medium">
+                Verify patient
+                {patientVerified && (
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200">
+                    Match
+                  </span>
+                )}
+              </h4>
+              <p className="mt-1 text-xs text-[var(--color-ink-soft)]">
+                {requirePatientMatch
+                  ? 'Have the patient, or whoever holds their key, confirm this voucher on this device before claiming.'
+                  : 'Optional: have the patient, or whoever holds their key, confirm this voucher on this device.'}
+              </p>
+            </div>
+            <Button variant="ghost" onClick={() => setVerifying((open) => !open)}>
+              {verifying ? 'Hide check' : patientVerified ? 'Verify again' : 'Verify patient'}
+            </Button>
+          </div>
+
+          {!verifying && requirePatientMatch && !patientVerified && (
+            <p role="status" className="mt-3 text-xs text-[var(--color-ink-soft)]">
+              This desk requires a patient check before claiming. The reference and key
+              enable “Mark patient seen”.
+            </p>
+          )}
+
+          {verifying && (
+            <div className="mt-3">
+              <VerifyPatient
+                expectedRef={v.beneficiaryRef}
+                onVerifiedChange={(verified) =>
+                  setVerifiedFor(verified ? verificationKey : null)
+                }
+              />
+            </div>
+          )}
         </div>
       )}
 

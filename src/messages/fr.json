@@ -60,7 +60,10 @@
     "clinic": "Clinique",
     "voucherContract": "Contrat de bon",
     "scanWithClinicScanner": "Scanner avec le scanner de la clinique",
-    "ledgerNote": "Ce bon représente un engagement sous séquestre sur le registre Stellar. Il ne contient aucun dossier médical ou d'identité personnel."
+    "ledgerNote": "Ce bon représente un engagement sous séquestre sur le registre Stellar. Il ne contient aucun dossier médical ou d'identité personnel.",
+    "reportProblem": "Signaler un problème",
+    "reportProblemIntro": "Seul le financeur peut ouvrir un litige. Si vous êtes le patient, un proche, ou toute autre personne ayant remarqué un problème avec ce bon, ouvrez un signalement. Il est prérempli avec le numéro public du bon, son statut, le service et la clinique uniquement — jamais la référence patient.",
+    "reportProblemAction": "Signaler un problème"
   },
   "clinic": {
     "title": "Bureau clinique",
@@ -93,6 +96,56 @@
     "settleAllProgress": "Règlement des bons échus",
     "settledSummary": "Paiement versé pour",
     "settleFailedSummary": "Non réglé :"
+    "earnings": "Revenus",
+    "earningsNote": "Trésorerie de cette clinique : soins réglés, paiements en attente et frais de protocole payés.",
+    "earningsSettled": "Réglé",
+    "earningsSettledDetail": "{count} bons · {net} net après frais",
+    "earningsPending": "Paiement en attente",
+    "earningsPendingDetail": "{count} réclamés, attestés ou contestés, avant frais",
+    "earningsFees": "Frais payés",
+    "earningsFeesDetail": "Frais de protocole sur les soins réglés",
+    "earningsMonthly": "Revenus mensuels",
+    "earningsMonthlyNote": "Regroupés par mois de financement de chaque bon (UTC).",
+    "earningsMonth": "Mois",
+    "earningsTotal": "Total",
+    "earningsEmpty": "Aucun revenu réglé ou en attente pour le moment.",
+    "earningsUnavailable": "Les revenus sont temporairement indisponibles. Le reste du bureau fonctionne toujours.",
+    "filterByStatus": "Filtrer par statut",
+    "allStatuses": "Tous",
+    "searchVoucherNumber": "Numéro de bon",
+    "searchVoucherPlaceholder": "ex. 21 ou #21",
+    "showingVouchers": "Affichage de {shown} bons sur {total}",
+    "noMatchingVouchers": "Aucun bon ne correspond à cette recherche.",
+    "clearFilters": "Effacer les filtres",
+    "connectWallet": "Connectez le portefeuille de la clinique pour gérer ce bureau.",
+    "checklist": {
+      "title": "Jusqu'à votre premier paiement",
+      "note": "Cinq étapes de l'inscription au versement. Chaque étape passe au vert une fois complétée.",
+      "progress": "{done} sur {total} terminées",
+      "done": "Terminée",
+      "next": "À faire",
+      "later": "Pas encore",
+      "allDone": "Les cinq étapes sont complètes. Les paiements réglés apparaissent dans Revenus.",
+      "steps": {
+        "register": "Enregistrer la clinique",
+        "verification": "Attendre la vérification",
+        "service": "Lister un service",
+        "claim": "Réclamer un bon",
+        "paid": "Être payé"
+      },
+      "hints": {
+        "register": "Remplissez le formulaire ci-dessous avec le nom de la clinique et le code pays.",
+        "waitingVerification": "Un administrateur doit vérifier la clinique. Cette page se met à jour automatiquement.",
+        "suspended": "Cette clinique est suspendue. Contactez l'administrateur pour la rétablir.",
+        "listService": "Ajoutez votre premier service et son prix ci-dessous pour que les bailleurs puissent l'acheter.",
+        "claimVoucher": "Un bon vous attend ci-dessous. Marquez le patient comme vu pour le réclamer.",
+        "shareClinic": "Partagez la page de votre clinique pour que les bailleurs vous trouvent. Quand un bon arrive, marquez le patient comme vu.",
+        "waitingAttester": "Les soins ont été réclamés. Un attestateur indépendant les confirme avant le paiement.",
+        "waitingDisputeWindow": "Les soins sont confirmés. Le paiement est libéré à la fin de la période de contestation.",
+        "disputed": "Une contestation est ouverte : le paiement est gelé jusqu'à la décision d'un administrateur.",
+        "releasePayment": "Un bon confirmé est prêt ci-dessous. Libérez le paiement pour recevoir les fonds."
+      }
+    }
   },
   "scanner": {
     "title": "Scanner le QR du bon patient",
@@ -106,6 +159,7 @@
   "language": {
     "en": "English",
     "fr": "Français",
-    "sw": "Kiswahili"
+    "sw": "Kiswahili",
+    "select": "Choisir la langue"
   }
 }

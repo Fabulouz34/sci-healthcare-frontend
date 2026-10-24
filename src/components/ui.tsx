@@ -266,10 +266,16 @@ export function Tooltip({
   const [visible, setVisible] = useState(false);
   const id = useId();
 
+  /**
+   * Centred over the trigger in either direction (#131): `start-1/2` is the
+   * inline start edge, and the translate that pulls the box back over the
+   * trigger has to change sign with the direction, which is what the `rtl:`
+   * variant below does.
+   */
   const position =
     side === 'top'
-      ? 'bottom-full left-1/2 mb-2 -translate-x-1/2'
-      : 'top-full left-1/2 mt-2 -translate-x-1/2';
+      ? 'bottom-full start-1/2 mb-2 -translate-x-1/2 rtl:translate-x-1/2'
+      : 'top-full start-1/2 mt-2 -translate-x-1/2 rtl:translate-x-1/2';
 
   return (
     <span className="relative inline-flex items-center">
@@ -306,7 +312,7 @@ export function InfoTip({ content }: { content: ReactNode }) {
       <span
         tabIndex={0}
         aria-label="More information"
-        className="ml-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px] leading-none text-[var(--color-ink-soft)]"
+        className="ms-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px] leading-none text-[var(--color-ink-soft)]"
       >
         ?
       </span>

@@ -69,6 +69,8 @@ export function useLiveUpdates({
       }
       if (providerAddress) {
         void mutate(['provider', providerAddress]);
+        void mutate(['provider-stats', providerAddress]);
+        void mutate(['provider-vouchers', providerAddress]);
         void mutate((key) => Array.isArray(key) && key[0] === 'providers');
       }
       if (!voucherId && !providerAddress) {

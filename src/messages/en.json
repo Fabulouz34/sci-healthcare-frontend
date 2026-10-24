@@ -60,7 +60,10 @@
     "clinic": "Clinic",
     "voucherContract": "Voucher Contract",
     "scanWithClinicScanner": "Scan with clinic scanner",
-    "ledgerNote": "This voucher represents an escrowed commitment on the Stellar ledger. It contains no personally identifiable medical or identity records."
+    "ledgerNote": "This voucher represents an escrowed commitment on the Stellar ledger. It contains no personally identifiable medical or identity records.",
+    "reportProblem": "Report a problem",
+    "reportProblemIntro": "Only the funder can open a dispute. If you are the patient, a relative, or anyone else who has noticed a problem with this voucher, open a report. It is prefilled with the public voucher number, status, service and clinic only — never the patient reference.",
+    "reportProblemAction": "Report a problem"
   },
   "clinic": {
     "title": "Clinic desk",
@@ -93,6 +96,56 @@
     "settleAllProgress": "Settling due vouchers",
     "settledSummary": "Payment released for",
     "settleFailedSummary": "Not settled:"
+    "earnings": "Earnings",
+    "earningsNote": "Cash flow for this clinic: settled care, payouts still in flight, and the protocol fees paid.",
+    "earningsSettled": "Settled",
+    "earningsSettledDetail": "{count} vouchers · {net} net after fees",
+    "earningsPending": "Pending payout",
+    "earningsPendingDetail": "{count} claimed, attested or disputed, before fees",
+    "earningsFees": "Fees paid",
+    "earningsFeesDetail": "Protocol fee on settled care",
+    "earningsMonthly": "Monthly earnings",
+    "earningsMonthlyNote": "Grouped by the month each voucher was funded (UTC).",
+    "earningsMonth": "Month",
+    "earningsTotal": "Total",
+    "earningsEmpty": "No settled or pending earnings yet.",
+    "earningsUnavailable": "Earnings are temporarily unavailable. The rest of the desk still works.",
+    "filterByStatus": "Filter by status",
+    "allStatuses": "All",
+    "searchVoucherNumber": "Voucher number",
+    "searchVoucherPlaceholder": "e.g. 21 or #21",
+    "showingVouchers": "Showing {shown} of {total} vouchers",
+    "noMatchingVouchers": "No vouchers match this search.",
+    "clearFilters": "Clear filters",
+    "connectWallet": "Connect the clinic's wallet to manage this desk.",
+    "checklist": {
+      "title": "Getting to your first payment",
+      "note": "Five steps from registering to money in the bank. Each step turns green as it is completed.",
+      "progress": "{done} of {total} done",
+      "done": "Done",
+      "next": "Next",
+      "later": "Not yet",
+      "allDone": "All five steps are complete. Settled payments appear in Earnings.",
+      "steps": {
+        "register": "Register the clinic",
+        "verification": "Wait for verification",
+        "service": "List a service",
+        "claim": "Claim a voucher",
+        "paid": "Get paid"
+      },
+      "hints": {
+        "register": "Fill in the form below with the clinic name and country code.",
+        "waitingVerification": "An administrator must verify the clinic. This page updates when it happens.",
+        "suspended": "This clinic is suspended. Contact the administrator to restore it.",
+        "listService": "Add your first service and price below so funders can buy it.",
+        "claimVoucher": "A voucher is waiting below. Mark the patient seen to claim it.",
+        "shareClinic": "Share your clinic page so funders can find you. When a voucher arrives, mark the patient seen.",
+        "waitingAttester": "Care has been claimed. An independent attester confirms it before payment.",
+        "waitingDisputeWindow": "Care is confirmed. The payment releases once the dispute window closes.",
+        "disputed": "A dispute is open, so the payment is frozen until an administrator resolves it.",
+        "releasePayment": "A confirmed voucher is ready below. Release the payment to receive the money."
+      }
+    }
   },
   "scanner": {
     "title": "Scan patient voucher QR",
@@ -106,6 +159,7 @@
   "language": {
     "en": "English",
     "fr": "Français",
-    "sw": "Kiswahili"
+    "sw": "Kiswahili",
+    "select": "Select language"
   }
 }

@@ -139,7 +139,7 @@ export default function PrintableCareSummaryPage() {
                 Stellar blockchain ledger.
               </p>
             </div>
-            <div className="text-left sm:text-right text-xs text-slate-500 space-y-1">
+            <div className="text-start sm:text-end text-xs text-slate-500 space-y-1">
               <div>
                 <span className="font-medium text-slate-700">Issued:</span>{' '}
                 {formatDate(new Date())}
@@ -157,15 +157,15 @@ export default function PrintableCareSummaryPage() {
 
           {/* Receipts Table */}
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm border-collapse">
+            <table className="w-full text-start text-sm border-collapse">
               <caption className="sr-only">Delivered patient care receipts</caption>
               <thead>
                 <tr className="border-b-2 border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  <th scope="col" className="py-3 pr-4">Date</th>
+                  <th scope="col" className="py-3 pe-4">Date</th>
                   <th scope="col" className="py-3 px-4">Clinic</th>
                   <th scope="col" className="py-3 px-4">Service</th>
-                  <th scope="col" className="py-3 px-4 text-right">Amount</th>
-                  <th scope="col" className="py-3 pl-4 text-right">Receipt #</th>
+                  <th scope="col" className="py-3 px-4 text-end">Amount</th>
+                  <th scope="col" className="py-3 ps-4 text-end">Receipt #</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -173,7 +173,7 @@ export default function PrintableCareSummaryPage() {
                   const clinicName = providerMap.get(r.providerAddress) ?? shortAddress(r.providerAddress);
                   return (
                     <tr key={r.voucherId} className="hover:bg-slate-50/50">
-                      <td className="py-3.5 pr-4 text-xs font-medium text-slate-700 whitespace-nowrap">
+                      <td className="py-3.5 pe-4 text-xs font-medium text-slate-700 whitespace-nowrap">
                         {formatDate(r.settledAt)}
                       </td>
                       <td className="py-3.5 px-4 font-medium text-slate-900">
@@ -182,10 +182,10 @@ export default function PrintableCareSummaryPage() {
                       <td className="py-3.5 px-4 text-slate-700">
                         {r.serviceLabel ?? `Service ${r.serviceCode}`}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-900 whitespace-nowrap">
+                      <td className="py-3.5 px-4 text-end font-mono font-medium text-slate-900 whitespace-nowrap">
                         ${r.amountDisplay}
                       </td>
-                      <td className="py-3.5 pl-4 text-right font-mono text-xs text-slate-500 whitespace-nowrap">
+                      <td className="py-3.5 ps-4 text-end font-mono text-xs text-slate-500 whitespace-nowrap">
                         #{r.voucherId}
                       </td>
                     </tr>
@@ -194,13 +194,13 @@ export default function PrintableCareSummaryPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-200 font-semibold text-slate-900">
-                  <td colSpan={3} className="py-3.5 pr-4 text-xs uppercase tracking-wider">
+                  <td colSpan={3} className="py-3.5 pe-4 text-xs uppercase tracking-wider">
                     Total
                   </td>
-                  <td className="py-3.5 px-4 text-right font-mono text-base">
+                  <td className="py-3.5 px-4 text-end font-mono text-base">
                     ${spend}
                   </td>
-                  <td className="py-3.5 pl-4 text-right text-xs text-slate-500">
+                  <td className="py-3.5 ps-4 text-end text-xs text-slate-500">
                     USDC
                   </td>
                 </tr>

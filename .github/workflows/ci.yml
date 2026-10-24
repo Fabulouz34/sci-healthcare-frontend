@@ -12,10 +12,10 @@ on:
 jobs:
   lint:
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -24,10 +24,10 @@ jobs:
 
   typecheck:
     name: typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -36,10 +36,10 @@ jobs:
 
   unit:
     name: unit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -50,7 +50,7 @@ jobs:
 
   build:
     name: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Every NEXT_PUBLIC_* value is inlined at build time and a production
     # build now refuses to start without the required ones (#76), so CI
     # supplies the testnet deployment's public contract ids (the same values
@@ -66,7 +66,7 @@ jobs:
       NEXT_PUBLIC_USDC_CONTRACT_ID: CCRLJ7FEIKTR3GBT3VQQPSIJGRBO2WPNMVFKJDP6AYGJQWECOR4QVE5M
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -89,10 +89,10 @@ jobs:
 
   storybook:
     name: storybook
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -101,7 +101,7 @@ jobs:
 
   lighthouse:
     name: lighthouse
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Same build-time env as the build job; the app is measured as built.
     env:
       NEXT_PUBLIC_API_URL: http://localhost:8080
@@ -114,7 +114,7 @@ jobs:
       NEXT_PUBLIC_USDC_CONTRACT_ID: CCRLJ7FEIKTR3GBT3VQQPSIJGRBO2WPNMVFKJDP6AYGJQWECOR4QVE5M
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -124,7 +124,7 @@ jobs:
       # lighthouserc.json. Uploads a temporary-public-storage report whose
       # URL appears in the logs, linked from the PR.
       - run: npx lhci autorun
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: lighthouse-results
@@ -132,10 +132,10 @@ jobs:
 
   visual:
     name: visual
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -146,7 +146,7 @@ jobs:
       # frozen. After an intentional UI change, run
       # `npm run test:visual:update` locally and commit the new snapshots.
       - run: npm run test:visual
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: visual-test-results
@@ -156,10 +156,10 @@ jobs:
 
   e2e:
     name: e2e
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -169,7 +169,7 @@ jobs:
       # Each flow runs against a mocked API with a mock wallet and mock RPC
       # (see src/lib/e2e-seam.ts): no testnet, indexer or wallet needed.
       - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-test-results
@@ -179,10 +179,10 @@ jobs:
 
   bot:
     name: auto-merge bot tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - run: node --test .github/scripts/automerge.test.cjs .github/scripts/security-scan.test.cjs

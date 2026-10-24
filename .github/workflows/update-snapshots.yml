@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   render:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       repo: ${{ steps.pr.outputs.repo }}
       ref: ${{ steps.pr.outputs.ref }}
@@ -52,7 +52,7 @@ jobs:
           ref: ${{ steps.pr.outputs.sha }}
           persist-credentials: false
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -60,7 +60,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:visual:update
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: snapshots
           path: tests/visual/__snapshots__/*.png
@@ -68,7 +68,7 @@ jobs:
 
   commit:
     needs: render
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
@@ -76,7 +76,7 @@ jobs:
           ref: ${{ needs.render.outputs.sha }}
           token: ${{ secrets.AUTOMERGE_TOKEN }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: snapshots
           path: ${{ runner.temp }}/snapshots

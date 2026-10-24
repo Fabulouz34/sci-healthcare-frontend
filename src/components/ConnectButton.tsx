@@ -74,7 +74,7 @@ export function ConnectButton() {
   }
 
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-start">
       <button
         ref={buttonRef}
         type="button"
@@ -102,7 +102,7 @@ export function ConnectButton() {
           role="menu"
           aria-orientation="vertical"
           aria-labelledby="wallet-menu-button"
-          className="absolute right-0 z-50 mt-2 w-80 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4 shadow-xl focus:outline-none"
+          className="absolute end-0 z-50 mt-2 w-80 rounded-xl border border-[var(--color-line)] bg-[var(--color-surface)] p-4 shadow-xl focus:outline-none"
         >
           {/* Wallet Name & Status */}
           <div className="flex items-center justify-between border-b border-[var(--color-line)] pb-3">
@@ -226,7 +226,7 @@ export function ConnectButton() {
                 setOpen(false);
                 void disconnect();
               }}
-              className="w-full rounded-lg px-2 py-1.5 text-left text-xs font-medium text-[var(--color-danger)] transition hover:bg-red-50"
+              className="w-full rounded-lg px-2 py-1.5 text-start text-xs font-medium text-[var(--color-danger)] transition hover:bg-red-50"
             >
               Disconnect wallet
             </button>

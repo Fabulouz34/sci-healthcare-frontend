@@ -3,7 +3,7 @@
 The web app for funders, clinics and attesters. Next.js 16, React 19,
 Tailwind 4, TypeScript.
 
-## Setup
+# # Setup
 
 Use Node 22 (`nvm use` reads `.nvmrc`). Its bundled npm 10 is what CI runs;
 a lockfile written by npm 11 drops entries npm 10 requires and fails `npm ci`.
@@ -26,6 +26,21 @@ npm run build
 `NEXT_PUBLIC_*` values first and stops with an itemised message when one is
 missing (see `next.config.ts`, #76). Fill in `.env.local` before building —
 `next dev` and Storybook are not affected by that check.
+
+## Architecture
+
+The map lives in [`docs/architecture.md`](docs/architecture.md). It covers the
+layers of the app — pages, providers, hooks, the API client, the contract
+wrappers, the wallet and the offline shell — and ends with the behaviours that
+surprise people reading the code for the first time. Read it before changing
+anything that crosses a layer: the SWR cache keys, the write path and the
+service worker's rules are all written down there.
+
+Two sentences it makes concrete, and that the rest of this file depends on:
+**reads go to the indexer over HTTP, and writes go from the browser straight
+to Soroban RPC.** Optional testnet fee sponsorship adds a sign-only backend
+round trip before browser submission; see [the sponsor contract](docs/sponsored-fees.md).
+The sponsor never receives a wallet key and must not submit transactions.
 
 ## Non-negotiables
 

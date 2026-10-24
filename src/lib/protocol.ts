@@ -1,17 +1,22 @@
 import { batchSettleMethod } from './batch-settle';
+import type { xdr } from '@stellar/stellar-sdk';
+
 import { config, isTestnet } from './config';
 import {
   FaucetClient,
   RegistryClient,
   VoucherClient,
 } from './contracts';
+import { ProviderStatus } from './contracts/generated/registry';
 import {
   arg,
   invokeContract,
   invokeContractBatch,
   invokePathPaymentThenContract,
+  prepareContractInvocation,
   readContract,
   type ContractCall,
+  type PreparedInvocation,
   type SignFn,
 } from './stellar';
 
@@ -51,37 +56,70 @@ function getFaucetClient() {
   });
 }
 
+export type CreateVoucherParams = {
+  funder: string;
+  beneficiaryRef: string;
+  provider: string;
+  serviceCode: number;
+  amount: bigint;
+  expiresAt: number;
+};
+
+/**
+ * `create_voucher` arguments, shared by the signing flow and the SEP-7
+ * preparation flow so both put exactly the same values on chain.
+ */
+function createVoucherArgs(params: CreateVoucherParams): xdr.ScVal[] {
+  const client = getVoucherClient();
+  const clean = params.beneficiaryRef.startsWith('0x')
+    ? params.beneficiaryRef.slice(2)
+    : params.beneficiaryRef;
+  return client.spec.funcArgsToScVals('create_voucher', {
+    funder: params.funder,
+    beneficiary_ref: Buffer.from(clean, 'hex'),
+    provider: params.provider,
+    service_code: params.serviceCode,
+    amount: params.amount,
+    expires_at: BigInt(params.expiresAt),
+  });
+}
+
 export const voucher = {
+  /** get_config() -> Config */
+  async admin(): Promise<string> {
+    const result = await readContract<{ admin: string }>(
+      config.contracts.voucher,
+      'get_config',
+    );
+    return result.admin;
+  },
+
   /** create_voucher(funder, beneficiary_ref, provider, service_code, amount, expires_at) -> u64 */
-  async create(
-    params: {
-      funder: string;
-      beneficiaryRef: string;
-      provider: string;
-      serviceCode: number;
-      amount: bigint;
-      expiresAt: number;
-    },
-    sign: SignFn,
-  ) {
-    const client = getVoucherClient();
-    const clean = params.beneficiaryRef.startsWith('0x')
-      ? params.beneficiaryRef.slice(2)
-      : params.beneficiaryRef;
-    const args = client.spec.funcArgsToScVals('create_voucher', {
-      funder: params.funder,
-      beneficiary_ref: Buffer.from(clean, 'hex'),
-      provider: params.provider,
-      service_code: params.serviceCode,
-      amount: params.amount,
-      expires_at: BigInt(params.expiresAt),
-    });
+  async create(params: CreateVoucherParams, sign: SignFn, sponsored = false) {
     return invokeContract(
       config.contracts.voucher,
       'create_voucher',
-      args,
+      createVoucherArgs(params),
       params.funder,
       sign,
+      sponsored,
+    );
+  },
+
+  /**
+   * Builds and simulates the same call without signing it, for a SEP-7
+   * payment link (#162): the user's wallet signs and submits the envelope.
+   * `source` is the account that pays, which is the funder.
+   */
+  async prepareCreate(
+    params: CreateVoucherParams,
+    source: string,
+  ): Promise<PreparedInvocation> {
+    return prepareContractInvocation(
+      config.contracts.voucher,
+      'create_voucher',
+      createVoucherArgs(params),
+      source,
     );
   },
 
@@ -90,30 +128,11 @@ export const voucher = {
    * then creates the voucher, in one transaction (#27).
    */
   async createWithXlmSwap(
-    params: {
-      funder: string;
-      beneficiaryRef: string;
-      provider: string;
-      serviceCode: number;
-      amount: bigint;
-      expiresAt: number;
-      swapAmount: bigint;
-    },
+    params: CreateVoucherParams & { swapAmount: bigint },
     sign: SignFn,
     slippageBps = 100,
   ) {
-    const client = getVoucherClient();
-    const clean = params.beneficiaryRef.startsWith('0x')
-      ? params.beneficiaryRef.slice(2)
-      : params.beneficiaryRef;
-    const args = client.spec.funcArgsToScVals('create_voucher', {
-      funder: params.funder,
-      beneficiary_ref: Buffer.from(clean, 'hex'),
-      provider: params.provider,
-      service_code: params.serviceCode,
-      amount: params.amount,
-      expires_at: BigInt(params.expiresAt),
-    });
+    const args = createVoucherArgs(params);
     return invokePathPaymentThenContract(
       config.contracts.voucher,
       'create_voucher',
@@ -310,6 +329,28 @@ export const voucher = {
     const args = client.spec.funcArgsToScVals('quote', { amount });
     return readContract<[bigint, bigint]>(config.contracts.voucher, 'quote', args);
   },
+
+  /** resolve_dispute(admin, voucher_id, refund_funder) */
+  async resolveDispute(
+    admin: string,
+    voucherId: string,
+    refundFunder: boolean,
+    sign: SignFn,
+  ) {
+    const client = getVoucherClient();
+    const args = client.spec.funcArgsToScVals('resolve_dispute', {
+      admin,
+      voucher_id: BigInt(voucherId),
+      refund_funder: refundFunder,
+    });
+    return invokeContract(
+      config.contracts.voucher,
+      'resolve_dispute',
+      args,
+      admin,
+      sign,
+    );
+  },
 };
 
 /**
@@ -331,6 +372,64 @@ const PROVIDER_STATUSES = ['Pending', 'Active', 'Suspended'] as const;
 export type ProviderStanding = (typeof PROVIDER_STATUSES)[number];
 
 export const registry = {
+  /** get_admin() */
+  async admin(): Promise<string> {
+    return readContract<string>(config.contracts.registry, 'get_admin');
+  },
+
+  /** set_provider_status(admin, provider_addr, status) */
+  async setProviderStatus(
+    admin: string,
+    provider: string,
+    status: ProviderStanding,
+    sign: SignFn,
+  ) {
+    const client = getRegistryClient();
+    const statusValue = {
+      Pending: ProviderStatus.Pending,
+      Active: ProviderStatus.Active,
+      Suspended: ProviderStatus.Suspended,
+    }[status];
+    const args = client.spec.funcArgsToScVals('set_provider_status', {
+      admin,
+      provider_addr: provider,
+      status: statusValue,
+    });
+    return invokeContract(
+      config.contracts.registry,
+      'set_provider_status',
+      args,
+      admin,
+      sign,
+    );
+  },
+
+  /** add_attester(admin, attester) */
+  async addAttester(admin: string, attester: string, sign: SignFn) {
+    const client = getRegistryClient();
+    const args = client.spec.funcArgsToScVals('add_attester', { admin, attester });
+    return invokeContract(
+      config.contracts.registry,
+      'add_attester',
+      args,
+      admin,
+      sign,
+    );
+  },
+
+  /** remove_attester(admin, attester) */
+  async removeAttester(admin: string, attester: string, sign: SignFn) {
+    const client = getRegistryClient();
+    const args = client.spec.funcArgsToScVals('remove_attester', { admin, attester });
+    return invokeContract(
+      config.contracts.registry,
+      'remove_attester',
+      args,
+      admin,
+      sign,
+    );
+  },
+
   /** register_provider(owner, name, country) */
   async registerProvider(
     owner: string,

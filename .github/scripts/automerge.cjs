@@ -124,8 +124,13 @@ function evaluate({ pr, ciRuns, checkRuns, files, reviews, writers, patterns, au
   }
 
   const touched = sensitiveFiles(files, patterns);
-  if (touched.length && !approvedByWriter(reviews, pr.head.sha, writers)) {
-    return { action: 'comment', reason: 'needs-approval', detail: touched };
+  const reviewRequired = pr.labels.some((label) => label.name === 'review-required');
+  if ((touched.length || reviewRequired) && !approvedByWriter(reviews, pr.head.sha, writers)) {
+    return {
+      action: 'comment',
+      reason: 'needs-approval',
+      detail: reviewRequired ? [...touched, 'review-required label'] : touched,
+    };
   }
 
   return { action: 'merge', reason: touched.length ? 'approved' : 'checks-passed' };
@@ -152,7 +157,7 @@ const MESSAGES = {
   'workflow-drift': () =>
     'All checks passed, but the CI workflows on `main` changed after this branch was created, and the bot is not allowed to merge a branch that would change workflow files. Please update your branch with `main` (merge or rebase); it will be merged automatically once CI passes again.',
   'needs-approval': (files) =>
-    `All checks passed. This pull request changes files that control CI, deployment or dependencies, so a maintainer must approve it before it is merged automatically:\n\n${files
+    `All checks passed. This pull request changes files that control CI, deployment or dependencies, or is marked for review, so a maintainer must approve it before it is merged automatically:\n\n${files
       .slice(0, 20)
       .map((f) => `- \`${f}\``)
       .join('\n')}${files.length > 20 ? `\n- …and ${files.length - 20} more` : ''}`,

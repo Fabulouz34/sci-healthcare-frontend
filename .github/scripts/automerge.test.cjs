@@ -98,6 +98,16 @@ test('sensitive files need a writer approval on the current commit', () => {
   assert.equal(evaluate(base({ files, reviews: stale, writers: new Set(['maint']) })).action, 'comment');
 });
 
+test('review-required label needs writer approval on the current commit', () => {
+  const labeledPr = pr({ labels: [{ name: 'review-required' }] });
+  const blocked = evaluate(base({ pr: labeledPr }));
+  assert.deepEqual([blocked.action, blocked.reason, blocked.detail],
+    ['comment', 'needs-approval', ['review-required label']]);
+
+  const approval = [{ user: { login: 'maint' }, state: 'APPROVED', commit_id: SHA }];
+  assert.equal(evaluate(base({ pr: labeledPr, reviews: approval, writers: new Set(['maint']) })).action, 'merge');
+});
+
 test('a later change request cancels an approval', () => {
   const reviews = [
     { user: { login: 'maint' }, state: 'APPROVED', commit_id: SHA },

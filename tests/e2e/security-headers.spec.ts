@@ -80,6 +80,13 @@ test('the policy names only the origins the app needs', async ({ page }) => {
   expect(csp).toContain('https://tile.openstreetmap.org');
   expect(csp).toContain('https://plausible.io');
 
+  // Trusted Types (#147): the DOM sinks that script-src cannot see are
+  // covered by the same policy, report-only until CSP_ENFORCE=1.
+  expect(csp).toContain("require-trusted-types-for 'script'");
+  expect(csp).toContain(
+    "trusted-types default sci-healthcare 'allow-duplicates'",
+  );
+
   // Nothing is open by default, and nothing is wildcarded.
   expect(csp).toContain("default-src 'self'");
   expect(csp).toContain("frame-ancestors 'none'");
@@ -127,19 +134,29 @@ test('normal use on every route reports no violations', async ({ page }) => {
   }
 });
 
-test('an injected third-party script is reported as refused', async ({ page }) => {
+test('an injected third-party script is refused', async ({ page }) => {
   await page.goto('/');
   expect(await violations(page)).toEqual([]);
 
-  // Same origin as the page's own scripts would pass; evil.example is not in
-  // the policy, so script-src refuses it.
-  await page.evaluate(() => {
+  // Trusted Types is the first line here: the `default` policy (#147)
+  // allows this origin and plausible.io only, and its `createScriptURL`
+  // throws for anything else — whether the CSP is enforcing or report-only.
+  // Without that, script-src would report the load instead.
+  const refused = await page.evaluate(() => {
     const script = document.createElement('script');
-    script.src = 'https://evil.example/steal.js';
+    try {
+      script.src = 'https://evil.example/steal.js';
+    } catch (error) {
+      return String(error);
+    }
     document.head.appendChild(script);
+    return null;
   });
 
-  await expect
-    .poll(async () => (await violations(page)).map((v) => v.blockedURI))
-    .toContain('https://evil.example/steal.js');
+  expect(refused).not.toBeNull();
+  expect(refused).toMatch(/not allowed|TrustedScriptURL/i);
+
+  // The script never reached the DOM and no CSP report was needed: the
+  // policy refused it before the network.
+  expect(await violations(page)).toEqual([]);
 });

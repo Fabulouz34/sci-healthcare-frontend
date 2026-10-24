@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 import { blockAnalytics } from '../analytics-guard';
+import { E2E_CONTRACTS } from '../e2e/contracts';
+import { FUNDER } from '../e2e/fixtures';
 import {
   blockRpc,
   CLINIC_ADDRESS,
@@ -61,6 +63,25 @@ test('attest — disconnected', async ({ page }) => {
   await expect(page.getByText('Connect an attester')).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot('attest.png');
+});
+
+test('admin — verified operator console', async ({ page }) => {
+  await page.addInitScript(
+    `window.__SCI_MOCK_WALLET__ = { address: '${FUNDER}' };
+     window.__SCI_MOCK_RPC__ = {
+       calls: [], args: [], reads: {
+         '${E2E_CONTRACTS.registry}:get_admin': '${FUNDER}',
+         '${E2E_CONTRACTS.voucher}:get_config': { admin: '${FUNDER}' }
+       }
+     };`,
+  );
+  await page.goto('/admin');
+  await expect(page.getByRole('heading', { name: 'Admin console' })).toBeVisible();
+  await expect(page.getByText('Pending clinics')).toBeVisible();
+  await expect(page.getByText('Disputed vouchers')).toBeVisible();
+  await expect(page.getByText('Attesters', { exact: true }).first()).toBeVisible();
+  await settle(page);
+  await expect(page).toHaveScreenshot('admin.png');
 });
 
 test('voucher detail — history and receipt', async ({ page }) => {

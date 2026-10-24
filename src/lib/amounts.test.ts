@@ -9,6 +9,7 @@ import {
   timeUntil,
   toAmountInput,
   toBaseUnits,
+  validateAmountInput,
 } from './amounts';
 
 /**
@@ -63,6 +64,26 @@ describe('toBaseUnits', () => {
     for (const bad of ['', ' ', 'abc', '1.2.3', '1.', '.5', '-1', '1,000', '1e7', '+1']) {
       expect(() => toBaseUnits(bad), bad).toThrow(/Not a valid amount/);
     }
+  });
+});
+
+describe('validateAmountInput', () => {
+  it('accepts valid amounts at or above the minimum', () => {
+    expect(validateAmountInput('3.00', 30_000_000n)).toBeNull();
+    expect(validateAmountInput('3.0000001', 30_000_000n)).toBeNull();
+  });
+
+  it('rejects malformed values and precision beyond seven decimals', () => {
+    expect(validateAmountInput('not a number', 1n)).toBe('Enter a valid amount.');
+    expect(validateAmountInput('1.00000000', 1n)).toBe(
+      'Use no more than 7 decimal places.',
+    );
+  });
+
+  it('requires at least the listed price', () => {
+    expect(validateAmountInput('2.99', 30_000_000n)).toBe(
+      'The listed price is $3.00. Enter at least that.',
+    );
   });
 });
 
