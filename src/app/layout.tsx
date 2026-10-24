@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { Analytics } from '@/components/Analytics';
 import { AnalyticsToggle } from '@/components/AnalyticsToggle';
+import { CommandPalette } from '@/components/CommandPalette';
 import { ErrorReporter } from '@/components/ErrorReporter';
 import { PendingTransactionGuard } from '@/components/PendingTransactionGuard';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
@@ -83,6 +84,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <TestnetNotice />
             </div>
             <SiteHeader />
+            <CommandPalette />
 
             <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 print:max-w-none print:px-0 print:py-0">
               {/* Toasts live here so transaction results from any page appear
@@ -117,6 +119,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   </Link>
                   <Link href="/faq" className="hover:text-[var(--color-brand)]">
                     FAQ
+                  </Link>
+                  <Link href="/status" className="hover:text-[var(--color-brand)]">
+                    Status
                   </Link>
                   <a
                     href="https://godgift-care.github.io/sci-healthcare-contracts/"

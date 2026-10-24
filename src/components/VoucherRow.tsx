@@ -248,8 +248,8 @@ export function VoucherRow({
             <Button
               key={a}
               variant={a === 'dispute' ? 'danger' : a === 'settle' ? 'primary' : 'ghost'}
-              disabled={disabled || busy !== null || reconciling !== null}
               disabled={
+                disabled ||
                 busy !== null ||
                 reconciling !== null ||
                 (a === 'claim' && requirePatientMatch && !patientVerified)

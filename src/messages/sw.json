@@ -1,9 +1,9 @@
 {
   "nav": {
-    "clinics": "Kliniki",
+    "clinics": "Kiliniki",
     "howItWorks": "Jinsi inavyofanya kazi",
     "myVouchers": "Vocha zangu",
-    "clinicDesk": "Dawati la kliniki",
+    "clinicDesk": "Dawati la kiliniki",
     "attest": "Thibitisha",
     "faq": "Maswali ya mara kwa mara",
     "stats": "Takwimu",
@@ -12,8 +12,8 @@
     "docs": "Nyaraka"
   },
   "footer": {
-    "testnetDisclaimer": "Usambazaji wa Testnet. Hakuna pesa halisi, na hakuna taarifa za afya ya mgonjwa zilizohifadhiwa kwenye mtandao — vocha zinarejelea kategoria ya huduma na rejeleo lisilo dhahiri la mnufaika pekee.",
-    "mainnetDisclaimer": "Hakuna taarifa za afya ya mgonjwa zilizohifadhiwa kwenye mtandao — vocha zinarejelea kategoria ya huduma na rejeleo lisilo dhahiri la mnufaika pekee."
+    "testnetDisclaimer": "Usambazi wa Testnet. Hakuna pesa halisi, na hakuna taarifa za afya ya mgonjwa zilizohifadhiwa kwenye mtandao — vocha zinarejelea kategoria ya huduma na rejeleo lisilo la mnufaika pekee.",
+    "mainnetDisclaimer": "Hakuna taarifa za afya ya mgonjwa zilizohifadhiwa kwenye mtandao — vocha zinarejelea kategoria ya huduma na rejeleo lisilo la mnufaika pekee."
   },
   "common": {
     "loading": "Inapakia…",
@@ -30,7 +30,11 @@
   },
   "home": {
     "verifiedClinics": "Kliniki zilizothibitishwa",
-    "noClinics": "Bado hakuna kliniki zilizosajiliwa."
+    "noClinics": "Bado hakuna kliniki zilizosajiliwa.",
+    "noClinicsHint": "Kwanza ukurasa kwenye kuongeza orodha ya kliniki zilizothibitishwa, au sajili kliniki yako kwa kuongeza huduma.",
+    "fundCare": "Fadhili huduma",
+    "findClinic": "Pata kliniki",
+    "listService": "Orodesha huduma"
   },
   "voucher": {
     "voucherNumber": "Vocha #{id}",
@@ -44,16 +48,17 @@
     "careReceipt": "Stakabadhi ya huduma",
     "minted": "Iliundwa",
     "patientReference": "Rejeleo la mgonjwa",
-    "patientReferenceNote": "Rejeleo la mgonjwa ni msimbo usio wazi. Haliwezi kugeuzwa kuwa jina au nambari ya rekodi.",
+    "patientReferenceNote": "Rejeleo la mgonjwa ni msimbo usio wa wazi. Haliwezi kugeuzwa kuwa jina au nambari ya rekodi.",
     "viewContract": "Tazama mkataba wa vocha",
     "copyLink": "Nakili kiungo",
     "linkCopied": "Kiungo kimenakiliwa!",
+    "addToCalendar": "Ongeza kalenda",
     "presentAtDesk": "Onyesha kwenye Dawati la Kliniki",
     "presentNote": "Onyesha msimbo huu wa QR unapofika kliniki. Dawati linaweza kuuchanganua mara moja ili kutafuta na kudai vocha yako.",
     "scanToView": "Changanua kutazama #{id}",
     "printPass": "Chapisha pasi ya vocha",
     "patientPass": "Pasi ya Vocha ya Mgonjwa",
-    "voucherPassTitle": "Vocha ya Kliniki ya Mgonjwa",
+    "voucherPassTitle": "Vocha ya Kiliniki ya Mgonjwa",
     "voucherNumberUpper": "Nambari ya Vocha",
     "presentNotice": "Onyesha nambari hii au msimbo wa QR kwenye mapokezi ya kliniki.",
     "service": "Huduma",
@@ -62,7 +67,7 @@
     "scanWithClinicScanner": "Changanua na kichanganuzi cha kliniki",
     "ledgerNote": "Vocha hii inawakilisha ahadi ya amana kwenye daftari ya Stellar. Haina rekodi zozote za kibinafsi za matibabu au utambulisho.",
     "reportProblem": "Ripoti tatizo",
-    "reportProblemIntro": "Ni mfadhili pekee anayeweza kufungua mgogoro. Ikiwa wewe ni mgonjwa, jamaa, au mtu mwingine yeyote aliyegundua tatizo kwenye vocha hii, fungua ripoti. Inajazwa mapema na nambari ya umma ya vocha, hali, huduma na kliniki pekee — kamwe si rejeleo la mgonjwa.",
+    "reportProblemIntro": "Ni mfadhili pekee anayeweza kufungua mgogoro. Ikiwa wewe ni mgonjwa, jamaa au mtu mwingine yeyote aliyegundua tatizo kwenye vocha hii, fungua ripoti. Inajazwa mapema na nambari ya umma ya vocha, hali, huduma na kliniki pekee — kamwe si rejeleo la mgonjwa.",
     "reportProblemAction": "Ripoti tatizo"
   },
   "clinic": {
@@ -75,11 +80,12 @@
     "register": "Sajili",
     "services": "Huduma",
     "noServices": "Bado hakuna huduma zilizoorodheshwa. Wafadhili wanaweza kulipia tu huduma unazoorodhesha.",
+    "noServicesHint": "Orodhesha huduma yako kwanza ili kupokea vocha za wafadhili na wagonjwa waweze kupata huduma zako.",
     "code": "Msimbo {code}",
     "edit": "Hariri",
     "delist": "Ondoa kwenye orodha",
     "confirmDelist": "Thibitisha kuondoa",
-    "delistNote": "Kuondoa kwenye orodha kunazuia vocha mpya kwa huduma hii. Vocha zilizofadhiliwa tayari huweka kiasi kilichokubaliwa na kulipwa kawaida.",
+    "delistNote": "Kuondoa kwenye orodha kunazuia vocha mpya kwa huduma hii. Vocha zilizothibitishwa tayari huweka kiasi kilichokubaliwa na kulipwa kawaida.",
     "updateService": "Sasisha huduma {code}",
     "listService": "Orodhesha huduma",
     "codePlaceholder": "Msimbo (101)",
@@ -95,7 +101,8 @@
     "settledOf": "{done} kati ya {total} zimelipwa",
     "settleAllProgress": "Inalipa vocha zilizostahili",
     "settledSummary": "Malipo yametolewa kwa",
-    "settleFailedSummary": "Haikulipwa:"
+    "settleFailedSummary": "Haikulipwa:",
+    "noIncomingHint": "Vocha mpya itakapoelekezwa kwenye kliniki yako itaonekana hapa. Hakuna cha kufanya kwa sasa.",
     "earnings": "Mapato",
     "earningsNote": "Mtiririko wa fedha wa kliniki hii: huduma zilizolipwa, malipo yanayosubiri, na ada za itifaki zilizolipwa.",
     "earningsSettled": "Imelipwa",
@@ -109,6 +116,7 @@
     "earningsMonth": "Mwezi",
     "earningsTotal": "Jumla",
     "earningsEmpty": "Bado hakuna mapato yaliyolipwa au yanayosubiri.",
+    "earningsEmptyHint": "Mapato yataonekana hapa mara tu vocha zilizodaiwa na kuthibitishwa.",
     "earningsUnavailable": "Mapato hayapatikani kwa sasa. Sehemu nyingine za dawati zinaendelea kufanya kazi.",
     "filterByStatus": "Chuja kwa hali",
     "allStatuses": "Zote",
@@ -135,14 +143,14 @@
       },
       "hints": {
         "register": "Jaza fomu hapa chini kwa jina la kliniki na msimbo wa nchi.",
-        "waitingVerification": "Msimamizi anapaswa kuthibitisha kliniki. Ukurasa huu unanasishwa yenyewe.",
+        "waitingVerification": "Msimamizi anapaswa kuthibitisha kliniki. Ukurasa huu unasasishwa yenyewe.",
         "suspended": "Kliniki hii imesimamishwa. Wasiliana na msimamizi ili irejeshwe.",
         "listService": "Ongeza huduma yako ya kwanza na bei hapa chini ili wafadhili waweze kuinunua.",
         "claimVoucher": "Vocha inakusubiri hapa chini. Weka alama ya mgonjwa kuonekana ili kuidai.",
         "shareClinic": "Shiriki ukurasa wa kliniki yako ili wafadhili wakupate. Vocha ikiwasili, weka alama ya mgonjwa kuonekana.",
         "waitingAttester": "Huduma imedaiwa. Mthibitishaji huru anaithibitisha kabla ya malipo.",
         "waitingDisputeWindow": "Huduma imethibitishwa. Malipo hutolewa baada ya kipindi cha pingamizi kumalizika.",
-        "disputed": "Pingamizi limefunguliwa, kwa hiyo malipo yamezuiwa hadi msimamizi aliamue.",
+        "disputed": "Pingamizi limefunguliwa, kwa hiyo malipo yamezuiwa hadi msimamizi aamue.",
         "releasePayment": "Vocha iliyothibitishwa iko tayari hapa chini. Toa malipo ili upokee fedha."
       }
     }

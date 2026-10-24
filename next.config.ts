@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { NextConfig } from 'next';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import bundleAnalyzer from '@next/bundle-analyzer';
@@ -210,6 +213,11 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+/** The web app's own version, read from package.json at build time. */
+const APP_VERSION = (
+  JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string }
+).version;
+
 const config: NextConfig = {
   reactStrictMode: true,
   // The API base is read at build time for the browser bundle, so it must
@@ -218,6 +226,9 @@ const config: NextConfig = {
   // always this variable missing from the build step.
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080',
+    // Shown on /status (#168) so a support question can name the build.
+    APP_VERSION: APP_VERSION,
+    APP_COMMIT: process.env.VERCEL_GIT_COMMIT_SHA ?? '',
   },
   async headers() {
     return [

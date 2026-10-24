@@ -12,9 +12,11 @@ import { problemReportUrl } from '@/lib/report-problem';
 import { stepTxHashes, voucherTimeline, type StepState } from '@/lib/timeline';
 import { useWallet } from '@/lib/wallet';
 import { CopyValue } from '@/components/CopyValue';
+import { SkeletonDetail } from '@/components/Skeleton';
 import { VoucherQr } from '@/components/VoucherQr';
 import { VoucherRow } from '@/components/VoucherRow';
-import { Alert, Card, ExplorerLink, Field, StatusBadge } from '@/components/ui';
+import { Alert, Button, Card, ExplorerLink, Field, StatusBadge } from '@/components/ui';
+import { buildVoucherExpiryIcs } from '@/lib/ics';
 import { useLocaleContext } from '@/i18n/LocaleContext';
 
 /**
@@ -66,7 +68,7 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
   // An unknown voucher number is a missing page, not an API failure.
   if (rawError instanceof ApiError && rawError.status === 404) notFound();
   if (error) return <Alert>{error}</Alert>;
-  if (!v) return <p className="text-sm text-[var(--color-ink-soft)]">{t('common.loading')}</p>;
+  if (!v) return <SkeletonDetail />;
 
   // Offer the actions this wallet can take. settle and refund are
   // permissionless, so anyone may trigger them once they are due.
@@ -78,6 +80,29 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
         : (['settle', 'refund'] as const);
 
   const steps = voucherTimeline(v, v.receipt, now, stepTxHashes(events));
+
+  function addToCalendar() {
+    if (!v || typeof window === 'undefined') return;
+    const expiresAtMs =
+      typeof v.expiresAt === 'string' ? Date.parse(v.expiresAt) : v.expiresAt.getTime();
+    const expiresAt = Math.floor(expiresAtMs / 1000);
+    const ics = buildVoucherExpiryIcs({
+      id: v.id,
+      expiresAt,
+      serviceLabel: v.serviceLabel ?? `Service ${v.serviceCode}`,
+      voucherUrl: window.location.href,
+    });
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `voucher-${v.id}-expiry.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   // Public facts only: the builder takes a narrow shape and deliberately
   // drops the beneficiary reference, funder address and every patient value
   // (#138).
@@ -190,7 +215,19 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
               <CopyValue value={v.funder} name={names.get(v.funder)} label="funder address" />
             </Field>
           </div>
-          <Field label={t('voucher.expires')}>{formatDate(v.expiresAt, locale)}</Field>
+          <Field label={t('voucher.expires')}>
+            <div className="flex items-center gap-2">
+              {formatDate(v.expiresAt, locale)}
+              <button
+                type="button"
+                onClick={addToCalendar}
+                className="inline-flex items-center gap-1 rounded-md border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-0.5 text-xs font-medium text-[var(--color-ink-soft)] transition hover:border-[var(--color-brand)] hover:text-[var(--color-ink)]"
+                aria-label={t('voucher.addToCalendar')}
+              >
+                {t('voucher.addToCalendar')}
+              </button>
+            </div>
+          </Field>
           {v.status === 'Settled' && v.settledNet && (
             <Field label={t('voucher.clinicReceived')}>
               <span className="mono">${formatUsdc(v.settledNet, locale)}</span>

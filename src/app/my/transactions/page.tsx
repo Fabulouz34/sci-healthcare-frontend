@@ -10,6 +10,7 @@ import { useLiveUpdates, useWalletHistory } from '@/lib/hooks';
 import { sortHistoryRows, type HistoryOrder } from '@/lib/wallet-history';
 import { useWallet } from '@/lib/wallet';
 import { Alert, Card, Empty, ExplorerLink } from '@/components/ui';
+import { SkeletonRow } from '@/components/Skeleton';
 
 /**
  * The connected wallet's transaction history (#165).
@@ -66,7 +67,11 @@ export default function TransactionsPage() {
       )}
 
       {address && isLoading && (
-        <Card className="px-4 py-6 text-sm text-[var(--color-ink-soft)]">Loading…</Card>
+        <Card className="space-y-4 p-5">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
       )}
 
       {address && !isLoading && !eventsUnavailable && rows.length === 0 && (

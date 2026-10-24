@@ -16,7 +16,17 @@ import { useToast } from './Toast';
  * get more from the faucet contract. Renders nothing when no faucet is
  * configured, so a production build never shows it.
  */
-export function TestUsdc({ compact = false }: { compact?: boolean }) {
+export function TestUsdc({
+  compact = false,
+  trustlineHint = true,
+}: {
+  compact?: boolean;
+  /**
+   * False where the page already offers the one-click Add USDC fix (#1):
+   * two trustline instructions side by side read as a contradiction.
+   */
+  trustlineHint?: boolean;
+}) {
   const { address, signTransaction, connect } = useWallet();
   const [balance, setBalance] = useState<bigint | null>(null);
   // Ledger time of the next allowed drip; 0 when one is allowed now.
@@ -107,7 +117,7 @@ export function TestUsdc({ compact = false }: { compact?: boolean }) {
         </p>
       )}
 
-      {(needsTrustline || (address && balance === null)) && (
+      {trustlineHint && (needsTrustline || (address && balance === null)) && (
         <div className="mt-3">
           <Alert kind="info">
             Your wallet must trust the test USDC asset before it can hold it. In

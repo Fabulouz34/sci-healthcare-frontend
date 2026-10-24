@@ -8,10 +8,12 @@ import {
   type DailyStats,
   type Provider,
   type ProviderStats,
+  type ReadyStatus,
   type ReceiptsResponse,
   type ServiceCatalogueItem,
   type ServicesResponse,
   type Stats,
+  type VersionInfo,
   type Voucher,
   type VoucherDetail,
   type VoucherEvent,
@@ -212,6 +214,47 @@ export function useStats(config?: SWRConfiguration<Stats>) {
 
   return {
     stats: data ?? null,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for the indexer's readiness check (#168). A degraded answer is data,
+ * not an error; `error` is set only when the API cannot be reached at all.
+ */
+export function useReady(config?: SWRConfiguration<ReadyStatus>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ReadyStatus>(
+    'ready',
+    () => api.ready(),
+    config,
+  );
+
+  return {
+    ready: data ?? null,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for the indexer's build and deployment info (#168).
+ */
+export function useVersion(config?: SWRConfiguration<VersionInfo>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<VersionInfo>(
+    'version',
+    () => api.version(),
+    config,
+  );
+
+  return {
+    version: data ?? null,
     error: error instanceof Error ? error.message : error ? String(error) : null,
     rawError: error,
     isLoading,

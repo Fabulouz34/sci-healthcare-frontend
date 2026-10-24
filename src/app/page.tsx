@@ -11,6 +11,7 @@ import { useLiveUpdates, useProviders, useStats } from '@/lib/hooks';
 import { useLowBandwidth } from '@/lib/low-bandwidth';
 import { DemoTour } from '@/components/DemoTour';
 import { Alert, Button, Card, Empty } from '@/components/ui';
+import { Skeleton, SkeletonCard } from '@/components/Skeleton';
 import { WidgetBoundary } from '@/components/WidgetBoundary';
 
 /**
@@ -23,7 +24,7 @@ const ClinicMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <p className="text-sm text-[var(--color-ink-soft)]">Loading map…</p>
+      <Skeleton className="h-96 w-full rounded-xl" />
     ),
   },
 );
@@ -277,7 +278,10 @@ export default function HomePage() {
 
         {error && <Alert>{error}</Alert>}
         {loading && !error && (
-          <p className="text-sm text-[var(--color-ink-soft)]">Loading clinics…</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         )}
 
         {!loading && !error && providers.length === 0 && (

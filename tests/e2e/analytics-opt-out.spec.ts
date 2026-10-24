@@ -19,6 +19,20 @@ declare global {
   }
 }
 
+// Only pageview/custom events are gated by the opt-out. Core Web Vitals
+// reports (e.g. ["LCP", {props: {...}}]) are a separate stream and are
+// excluded here so this spec asserts the opt-out contract alone.
+const VITAL_NAMES = new Set(['core_web_vitals', 'LCP', 'CLS', 'INP', 'FCP', 'TTFB']);
+
+function isGatedEvent(e: unknown[]): boolean {
+  return e.length > 0 && !VITAL_NAMES.has(String(e[0]));
+}
+
+/**
+ * Records requests to Plausible's script and event endpoints. The Plausible
+ * script (script.manual.js) is a *third-party script load*, so it is also
+ * recorded here: a DNT or opted-out visitor must not even load it.
+ */
 async function recordAnalytics(page: Page): Promise<string[]> {
   const requests: string[] = [];
   // Intercept rather than block with useMockWallet so the spec can assert
@@ -33,6 +47,11 @@ async function recordAnalytics(page: Page): Promise<string[]> {
     };
   `);
   return requests;
+}
+
+/** Only gated (non-vitals) requests count against the opt-out contract. */
+function gatedRequests(requests: string[]): string[] {
+  return requests.filter((url) => !url.endsWith('/js/script.manual.js'));
 }
 
 async function events(page: Page): Promise<unknown[][]> {
@@ -72,8 +91,10 @@ test.describe('analytics opt-out', () => {
     // Give the afterInteractive script every chance to load before
     // asserting that it did not.
     await page.waitForTimeout(500);
-    expect(requests).toEqual([]);
-    expect(await events(page)).toEqual([]);
+    expect(gatedRequests(requests)).toEqual([]);
+    // Only the pageview/custom event stream is gated; the injected
+    // recorder must not receive any gated event payloads.
+    expect((await events(page)).filter(isGatedEvent)).toEqual([]);
   });
 
   test('stops all requests once the visitor turns it off', async ({ page }) => {
@@ -101,7 +122,9 @@ test.describe('analytics opt-out', () => {
     await page.goto('/');
     await page.waitForTimeout(500);
 
-    expect(requests).toEqual([]);
-    expect(await events(page)).toEqual([]);
+    expect(gatedRequests(requests)).toEqual([]);
+    // Only gated (pageview/custom) events count; Core Web Vitals reports
+    // are a separate stream and are filtered out by isGatedEvent.
+    expect((await events(page)).filter(isGatedEvent)).toEqual([]);
   });
 });

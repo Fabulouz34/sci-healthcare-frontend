@@ -7,10 +7,6 @@ import useSWR from 'swr';
 import { formatUsdc, toAmountInput, toBaseUnits } from '@/lib/amounts';
 import { trackEvent } from '@/lib/analytics';
 import { settleableVouchers } from '@/lib/batch-settle';
-import { explorerTx } from '@/lib/config';
-import { humaniseError, REGISTRY_ERRORS } from '@/lib/errors';
-import { useLiveUpdates, useProvider, useVouchers } from '@/lib/hooks';
-import { registry, voucher as protocol, type ProviderStanding } from '@/lib/protocol';
 import type { VoucherStatus } from '@/lib/api';
 import { monthlyEarnings, summariseEarnings } from '@/lib/clinic-earnings';
 import { explorerTx } from '@/lib/config';
@@ -22,7 +18,7 @@ import {
   useProviderVouchers,
   useVouchers,
 } from '@/lib/hooks';
-import { registry, type ProviderStanding } from '@/lib/protocol';
+import { registry, voucher as protocol, type ProviderStanding } from '@/lib/protocol';
 import {
   VOUCHER_STATUSES,
   filterVouchers,
@@ -34,6 +30,7 @@ import { QrScannerModal } from '@/components/QrScannerModal';
 import { VoucherRow } from '@/components/VoucherRow';
 import { useToast } from '@/components/Toast';
 import { Alert, Button, Card, Empty, ExplorerLink } from '@/components/ui';
+import { Skeleton, SkeletonRow } from '@/components/Skeleton';
 
 import { useLocaleContext } from '@/i18n/LocaleContext';
 
@@ -363,14 +360,16 @@ export default function ClinicDeskPage() {
                       : '—'}
                 </div>
                 <div className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                  {earningsLoading
-                    ? t('common.loading')
-                    : t('clinic.earningsSettledDetail', {
-                        count: clinicStats?.settledVouchers ?? earnings.settledCount,
-                        net: earningsReady
-                          ? `$${formatUsdc(earnings.netReceived, locale)}`
-                          : '—',
-                      })}
+                  {earningsLoading ? (
+                    <Skeleton className="mt-1 h-3 w-28" />
+                  ) : (
+                    t('clinic.earningsSettledDetail', {
+                      count: clinicStats?.settledVouchers ?? earnings.settledCount,
+                      net: earningsReady
+                        ? `$${formatUsdc(earnings.netReceived, locale)}`
+                        : '—',
+                    })
+                  )}
                 </div>
               </Card>
             </div>
@@ -384,13 +383,15 @@ export default function ClinicDeskPage() {
                   {earningsReady ? `$${formatUsdc(earnings.pending, locale)}` : '—'}
                 </div>
                 <div className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
-                  {earningsLoading
-                    ? t('common.loading')
-                    : earningsReady
-                      ? t('clinic.earningsPendingDetail', {
-                          count: earnings.pendingCount,
-                        })
-                      : t('clinic.earningsUnavailable')}
+                  {earningsLoading ? (
+                    <Skeleton className="mt-1 h-3 w-28" />
+                  ) : earningsReady ? (
+                    t('clinic.earningsPendingDetail', {
+                      count: earnings.pendingCount,
+                    })
+                  ) : (
+                    t('clinic.earningsUnavailable')
+                  )}
                 </div>
               </Card>
             </div>
@@ -420,9 +421,10 @@ export default function ClinicDeskPage() {
 
             <Card className="p-4">
               {earningsLoading ? (
-                <p className="text-sm text-[var(--color-ink-soft)]">
-                  {t('common.loading')}
-                </p>
+                <div className="space-y-4 py-2">
+                  <SkeletonRow />
+                  <SkeletonRow />
+                </div>
               ) : earningsError ? (
                 <p className="text-sm text-[var(--color-ink-soft)]">
                   {t('clinic.earningsUnavailable')}

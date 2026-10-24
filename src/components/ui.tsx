@@ -50,7 +50,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex max-sm:min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed ${styles} ${className}`}
+      className={` inline-flex max-sm:min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
     </button>
@@ -104,15 +104,37 @@ export function Alert({
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
+/**
+ * Helpful empty state.
+ *
+ * Every list should pass a specific `title`, a short `description` explaining
+ * what to do next, and a primary `action` (e.g. fund care, list a service,
+ * find a clinic). children remain supported for backwards compatibility.
+ */
+export function Empty({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title?: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-dashed border-[var(--color-line)] px-6 py-12 text-center text-sm text-[var(--color-ink-soft)]">
-      {children}
+      {title && (
+        <p className="text-base font-semibold text-[var(--color-ink)]">{title}</p>
+      )}
+      {description && <div className="mt-1.5">{description}</div>}
+      {children && <div className={title || description ? 'mt-1.5' : ''}>{children}</div>}
+      {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );
 }
 
-export function ExplorerLink({ href, children }: { href: string; children: ReactNode }) {
+export function ExplorerLink( { href, children }: { href: string; children: ReactNode }) {
   return (
     <a
       href={href}
@@ -125,7 +147,7 @@ export function ExplorerLink({ href, children }: { href: string; children: React
   );
 }
 
-export function NavLink({ href, children }: { href: string; children: ReactNode }) {
+export function NavLink( { href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
@@ -141,7 +163,7 @@ export function NavLink({ href, children }: { href: string; children: ReactNode 
  *
  * - Focus moves into the dialog on open and returns to the trigger on close.
  * - `Escape` closes; Tab cycles inside (focus trap).
- * - Backdrop click closes. `aria-modal` + labelled title for screen readers.
+ * - Backdrop click closes. `aria-modal`+ labelled title for screen readers.
  *
  * Built on a plain div + portal rather than `<dialog>` so styling and the
  * trap behave identically in every browser the wallet kit supports.
