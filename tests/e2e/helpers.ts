@@ -17,7 +17,12 @@ import type { MockRpcCall } from '@/lib/e2e-seam';
 declare global {
   interface Window {
     __SCI_MOCK_WALLET__?: { address: string };
-    __SCI_MOCK_RPC__?: { calls: MockRpcCall[]; args: string[][]; delayMs?: number };
+    __SCI_MOCK_RPC__?: {
+      calls: MockRpcCall[];
+      args: string[][];
+      delayMs?: number;
+      reads?: Record<string, unknown>;
+    };
   }
 }
 
@@ -29,10 +34,11 @@ export async function useMockWallet(
   page: Page,
   address: string,
   delayMs = 0,
+  reads?: Record<string, unknown>,
 ): Promise<void> {
   await page.addInitScript(
     `window.__SCI_MOCK_WALLET__ = { address: '${address}' };
-     window.__SCI_MOCK_RPC__ = { calls: [], args: [], delayMs: ${delayMs} };`,
+     window.__SCI_MOCK_RPC__ = { calls: [], args: [], delayMs: ${delayMs}, reads: ${JSON.stringify(reads ?? {})} };`,
   );
   // The analytics script tag is present in the test build; keep the request
   // itself inside the sandbox. (The analytics spec stubs window.plausible,
@@ -69,6 +75,25 @@ export type BackendState = {
   providerStats?: Record<string, unknown>;
   attesters?: Record<string, unknown>[];
   receipts?: { total: number; totalSpendDisplay: string; receipts: Record<string, unknown>[] };
+  /**
+   * `GET /ready` (#168). Defaults to a healthy, caught-up indexer; a
+   * degraded body is served with 503, like a real readiness probe.
+   */
+  ready?: Record<string, unknown>;
+  /** `GET /version` (#168). */
+  version?: Record<string, unknown>;
+  /**
+   * `GET /services` service catalogue. Each item is a `ServiceCatalogueItem`
+   * with `code`, `labels`, `clinicCount`, `minPrice`/`maxPrice` and an
+   * optional `providers` array used by the service comparison page.
+   */
+  services?: Record<string, unknown>[];
+  /**
+   * `GET /services/:code` lookup, keyed by service code. Used by the service
+   * comparison page. An omitted code answers 404.
+   */
+  serviceByCode?: Record<string, Record<string, unknown>>;
+
   governance?: Record<string, unknown>;
 };
 
@@ -84,6 +109,30 @@ export async function mockBackend(page: Page, state: BackendState): Promise<void
         contentType: 'application/json',
         body: JSON.stringify(body),
       });
+
+    if (parts[0] === 'ready') {
+      const ready = state.ready ?? {
+        status: 'ready',
+        checks: { database: true, network: 'testnet', indexedLedger: 512340, lagLedgers: 0, gapDetected: false },
+      };
+      return json(ready, ready.status === 'ready' ? 200 : 503);
+    }
+
+    if (parts[0] === 'version') {
+      return json(
+        state.version ?? {
+          version: '0.2.0',
+          commit: 'abc1234def5678',
+          network: 'testnet',
+          rpcUrl: 'https://soroban-testnet.stellar.org',
+          rpcUrls: ['https://soroban-testnet.stellar.org'],
+          contracts: { registry: '', voucher: '', receipt: '', usdc: null, faucet: null },
+          indexerStartLedger: 500000,
+          startedAt: '2026-06-01T00:00:00.000Z',
+          uptimeSeconds: 3600,
+        },
+      );
+    }
 
     if (parts[0] === 'stats') {
       if (parts[1] === 'daily') {
@@ -216,6 +265,23 @@ export async function mockBackend(page: Page, state: BackendState): Promise<void
       return json({ total: providers.length, providers });
     }
 
+    if (parts[0] === 'services') {
+      const services = state.services ?? [];
+      if (parts.length === 1) {
+        return json({ total: services.length, services });
+      }
+      if (parts.length === 2) {
+        const found = state.serviceByCode?.[parts[1]];
+        if (found) return json(found);
+        const byCode = services.find(
+          (s) => String((s as { code?: unknown }).code) === parts[1],
+        );
+        if (byCode) return json(byCode);
+        return json({ message: 'Not found' }, 404);
+      }
+      return json({ message: 'Not found' }, 404);
+    }
+
     if (parts[0] === 'vouchers') {
       // /vouchers/<id>/events — per-step transaction hashes (#18).
       if (parts.length === 3 && parts[2] === 'events') {
@@ -248,9 +314,14 @@ export async function mockBackend(page: Page, state: BackendState): Promise<void
   });
 }
 
+/** Every call recorded by the RPC mock, in call order. */
+export async function mockCalls(page: Page): Promise<MockRpcCall[]> {
+  return page.evaluate(() => window.__SCI_MOCK_RPC__?.calls ?? []);
+}
+
 /** Contract writes recorded by the RPC mock, in call order. */
 export async function mockInvokes(page: Page): Promise<MockRpcCall[]> {
-  const calls = await page.evaluate(() => window.__SCI_MOCK_RPC__?.calls ?? []);
+  const calls = await mockCalls(page);
   return calls.filter((c) => c.kind === 'invoke');
 }
 

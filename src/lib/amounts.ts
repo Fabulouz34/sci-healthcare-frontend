@@ -16,6 +16,22 @@ export function toBaseUnits(display: string): bigint {
   return BigInt(whole) * SCALE + BigInt(padded || '0');
 }
 
+export function validateAmountInput(display: string, minimum: bigint): string | null {
+  const trimmed = display.trim();
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return 'Enter a valid amount.';
+
+  const [, fraction = ''] = trimmed.split('.');
+  if (fraction.length > DECIMALS) {
+    return `Use no more than ${DECIMALS} decimal places.`;
+  }
+
+  if (toBaseUnits(trimmed) < minimum) {
+    return `The listed price is $${formatUsdc(minimum)}. Enter at least that.`;
+  }
+
+  return null;
+}
+
 /** Formats base units for display, trimming trailing zeros to 2dp minimum. */
 export function formatUsdc(base: string | bigint, locale = 'en'): string {
   const value = typeof base === 'bigint' ? base : BigInt(base);

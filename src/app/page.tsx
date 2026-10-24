@@ -11,6 +11,8 @@ import { useLiveUpdates, useProviders, useStats } from '@/lib/hooks';
 import { useLowBandwidth } from '@/lib/low-bandwidth';
 import { DemoTour } from '@/components/DemoTour';
 import { Alert, Button, Card, Empty } from '@/components/ui';
+import { Skeleton, SkeletonCard } from '@/components/Skeleton';
+import { WidgetBoundary } from '@/components/WidgetBoundary';
 
 /**
  * Leaflet is loaded only when the map view is opened. `ssr: false` keeps
@@ -22,7 +24,7 @@ const ClinicMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <p className="text-sm text-[var(--color-ink-soft)]">Loading map…</p>
+      <Skeleton className="h-96 w-full rounded-xl" />
     ),
   },
 );
@@ -276,7 +278,10 @@ export default function HomePage() {
 
         {error && <Alert>{error}</Alert>}
         {loading && !error && (
-          <p className="text-sm text-[var(--color-ink-soft)]">Loading clinics…</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         )}
 
         {!loading && !error && providers.length === 0 && (
@@ -306,7 +311,11 @@ export default function HomePage() {
         {activeView === 'map' && visible.length > 0 && (
           <div className="space-y-3">
             {located.length > 0 ? (
-              <ClinicMap providers={located} />
+              // A failing map (or its chunk) must not take the directory
+              // down with it; the unlocated list below still renders.
+              <WidgetBoundary label="The map">
+                <ClinicMap providers={located} />
+              </WidgetBoundary>
             ) : (
               <Empty>No clinic has published a location yet.</Empty>
             )}

@@ -62,17 +62,43 @@ export type VoucherFilters = {
   status: VoucherStatus | null;
   /** Provider address, or null for every clinic. */
   clinic: string | null;
+  /** Typed voucher number; empty for every voucher. */
+  search?: string;
 };
 
 export function filterVouchers(
   vouchers: Voucher[],
-  { status, clinic }: VoucherFilters,
+  { status, clinic, search = '' }: VoucherFilters,
 ): Voucher[] {
   return vouchers.filter(
     (v) =>
       (!status || v.status === status) &&
-      (!clinic || v.provider.address === clinic),
+      (!clinic || v.provider.address === clinic) &&
+      matchesVoucherNumber(v, search),
   );
+}
+
+/**
+ * Does this voucher's number match what was typed?
+ *
+ * Clinic staff read the number off the patient's pass, where it is printed
+ * with a leading `#`, and may leave a space after it. Both are ignored so
+ * `21`, `#21` and `# 21` find voucher 21. Matching is on the start of the
+ * id: a typed number is the beginning of the number being looked for, so
+ * `1` does not pull in 21 as well.
+ */
+export function matchesVoucherNumber(v: Voucher, search: string): boolean {
+  const query = search.trim().replace(/^#\s*/, '').toLowerCase();
+  return !query || v.id.toLowerCase().startsWith(query);
+}
+
+/** How many vouchers sit in each status, for the clinic desk's tabs. */
+export function statusCounts(vouchers: Voucher[]): Record<VoucherStatus, number> {
+  const counts = Object.fromEntries(
+    VOUCHER_STATUSES.map((s) => [s, 0]),
+  ) as Record<VoucherStatus, number>;
+  for (const v of vouchers) counts[v.status] += 1;
+  return counts;
 }
 
 export function sortVouchers(vouchers: Voucher[], sort: VoucherSort): Voucher[] {

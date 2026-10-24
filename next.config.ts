@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import type { NextConfig } from 'next';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import bundleAnalyzer from '@next/bundle-analyzer';
+
+import { contentSecurityPolicy, contentSecurityPolicyHeaderName } from './src/lib/csp';
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -74,16 +79,6 @@ const REQUIRED_BUILD_VARS: RequiredVar[] = [
 
 /** Soroban contract ids are `C` plus 55 base32 characters. */
 const CONTRACT_ID_SHAPE = /^C[A-Z2-7]{55}$/;
-
-/** `https://host` for an absolute URL, or null when it is missing/unusable. */
-function originOf(value: string | undefined): string | null {
-  if (!value) return null;
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
-}
 
 function isAbsoluteUrl(value: string): boolean {
   try {
@@ -165,20 +160,13 @@ function assertBuildConfig(phase: string): void {
 }
 
 /* -------------------------------------------------------------------------
- * Security headers (#73)
+ * Security headers (#73, #147)
  *
- * This app builds and signs financial transactions in the browser, so the
- * Content-Security-Policy is the difference between "an injected script
- * exfiltrates the user's balance" and "the browser refuses to load it". An
- * HTTP header is the only place it can live for a statically rendered app —
- * a `<meta>` tag cannot express `frame-ancestors` and would have to be
- * repeated in every page.
- *
- * The policy is assembled from the *same* build-time variables the client
- * bundle reads (`src/lib/config.ts`), so the origins allowed here cannot
- * drift from the origins the app actually calls: the indexer API, Soroban
- * RPC, Horizon, the wallet hosts the SEP-43 kit talks to, the map tiles and
- * the two optional third parties. Everything else is refused.
+ * The policy itself lives in `src/lib/csp.ts`: a pure function of the build
+ * environment, unit-tested in `src/lib/csp.test.ts`. It is the difference
+ * between "an injected script exfiltrates the user's balance" and "the
+ * browser refuses to load it", and it includes Trusted Types (#147) so the
+ * DOM sinks that script-src cannot see are covered too.
  *
  * Rollout: the policy is sent as `Content-Security-Policy-Report-Only` by
  * default, so a deployment can be exercised with real wallets while
@@ -187,101 +175,13 @@ function assertBuildConfig(phase: string): void {
  * build-time decision — headers are baked in, so redeploy after changing it.
  * ---------------------------------------------------------------------- */
 
-const CSP_ENFORCE = Boolean(process.env.CSP_ENFORCE);
-
-const NETWORK = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'testnet';
-
-/**
- * Horizon, read directly for account state and spendable XLM
- * (`src/lib/stellar.ts`); Soroban RPC cannot answer either question.
- */
-function horizonOrigin(): string {
-  if (NETWORK === 'public') return 'https://horizon.stellar.org';
-  if (NETWORK === 'futurenet') return 'https://horizon-futurenet.stellar.org';
-  return 'https://horizon-testnet.stellar.org';
-}
-
-/**
- * The wallet endpoints a user can actually reach from this page.
- *
- * Freighter, Rabet, LOBSTR, Hana, Klever, OneKey, Bitget, Cactus and D'CENT
- * are browser extensions: their scripts are injected into an isolated world
- * and are not subject to this policy at all. Albedo and xBull open a popup
- * and hand it the request — Albedo over XHR to `albedo.link`, xBull over
- * `postMessage` to `wallet.xbull.app` — so both hosts have to be allowed to
- * connect. `stellar.creit.tech` serves the wallet icons in the kit's own
- * selection modal.
- */
-const WALLETS = {
-  albedo: 'https://albedo.link',
-  xbull: 'https://wallet.xbull.app',
-  icons: 'https://stellar.creit.tech',
-};
-
-/** OpenStreetMap raster tiles, requested only when the map view is opened. */
-const MAP_TILES = 'https://tile.openstreetmap.org';
-
-function contentSecurityPolicy(): string {
-  const isDev = process.env.NODE_ENV === 'development';
-  const api = originOf(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080');
-  const rpc = originOf(process.env.NEXT_PUBLIC_SOROBAN_RPC_URL);
-  // Empty DSN disables error reporting entirely; then no origin is allowed.
-  const sentry = originOf(process.env.NEXT_PUBLIC_SENTRY_DSN);
-  // Empty domain disables analytics entirely; the script never loads.
-  const plausible = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN
-    ? 'https://plausible.io'
-    : null;
-
-  const directives: Record<string, (string | false | null | undefined)[]> = {
-    'default-src': ["'self'"],
-    // No <base> rewriting, no plugins, no framing, no cross-origin form posts.
-    'base-uri': ["'self'"],
-    'object-src': ["'none'"],
-    'frame-ancestors': ["'none'"],
-    'form-action': ["'self'"],
-    // Next's hydration payload is an inline script. Without a per-request
-    // nonce — which would force every route to render dynamically and break
-    // the installable offline shell (#74) — 'unsafe-inline' is what lets it
-    // run. External scripts are still restricted to 'self' and Plausible,
-    // which is where the injected-script risk lives. Dev additionally needs
-    // 'unsafe-eval' for the HMR runtime.
-    'script-src': ["'self'", "'unsafe-inline'", plausible, isDev && "'unsafe-eval'"],
-    // Tailwind ships a stylesheet, but Leaflet positions markers with inline
-    // style attributes, which need 'unsafe-inline' here.
-    'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", 'data:', 'blob:', MAP_TILES, WALLETS.icons],
-    'font-src': ["'self'", 'data:'],
-    // Every fetch, EventSource and contract read/write the app performs.
-    'connect-src': [
-      "'self'",
-      api,
-      rpc,
-      horizonOrigin(),
-      WALLETS.albedo,
-      WALLETS.xbull,
-      plausible,
-      sentry,
-      isDev && 'ws:',
-    ],
-    // Wallet signing happens in a popup (window.open), never an iframe, so
-    // only this app's own frames are allowed.
-    'frame-src': ["'self'"],
-    'worker-src': ["'self'"],
-    'manifest-src': ["'self'"],
-  };
-
-  return Object.entries(directives)
-    .map(([name, values]) => {
-      const allowed = values.filter((value): value is string => Boolean(value));
-      return `${name} ${allowed.join(' ')}`;
-    })
-    .join('; ');
-}
-
 const securityHeaders = [
   {
-    key: CSP_ENFORCE ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only',
-    value: contentSecurityPolicy(),
+    key: contentSecurityPolicyHeaderName(process.env),
+    value: contentSecurityPolicy(
+      process.env,
+      process.env.NODE_ENV === 'development',
+    ),
   },
   // Never let a browser guess a type: the JSON read model must not be able
   // to render as script.
@@ -313,6 +213,11 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+/** The web app's own version, read from package.json at build time. */
+const APP_VERSION = (
+  JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8')) as { version: string }
+).version;
+
 const config: NextConfig = {
   reactStrictMode: true,
   // The API base is read at build time for the browser bundle, so it must
@@ -321,6 +226,9 @@ const config: NextConfig = {
   // always this variable missing from the build step.
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080',
+    // Shown on /status (#168) so a support question can name the build.
+    APP_VERSION: APP_VERSION,
+    APP_COMMIT: process.env.VERCEL_GIT_COMMIT_SHA ?? '',
   },
   async headers() {
     return [

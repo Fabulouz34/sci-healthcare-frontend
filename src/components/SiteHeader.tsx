@@ -5,6 +5,8 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useId, useState } from 'react';
 
 import { NavLink } from '@/components/ui';
+import { useAdminAccess } from '@/lib/hooks';
+import { useWallet } from '@/lib/wallet';
 
 import { ConnectButton } from './ConnectButton';
 import { LowBandwidthToggle } from './LowBandwidthToggle';
@@ -32,6 +34,9 @@ const LINKS = [
  */
 export function SiteHeader() {
   const pathname = usePathname();
+  const { address } = useWallet();
+  const { isAdmin } = useAdminAccess(address);
+  const links = isAdmin ? [...LINKS, { href: '/admin', label: 'Admin' }] : LINKS;
   // Keyed by the route that opened it, so a navigation (including Back) closes
   // the panel without an effect that would set state during render.
   const [openPath, setOpenPath] = useState<string | null>(null);
@@ -48,7 +53,7 @@ export function SiteHeader() {
   }, [open]);
 
   return (
-    <header className="border-b border-[var(--color-line)] bg-[var(--color-surface)]">
+    <header className="border-b border-[var(--color-line)] bg-[var(--color-surface)] print:hidden">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 py-2.5 sm:px-6 sm:py-3">
         <div className="flex min-w-0 items-center gap-2 sm:gap-6">
           <Link href="/" className="flex items-center gap-2 font-semibold">
@@ -61,7 +66,7 @@ export function SiteHeader() {
             SCI Healthcare
           </Link>
           <nav aria-label="Primary" className="hidden items-center gap-1 sm:flex">
-            {LINKS.map((link) => (
+            {links.map((link) => (
               <NavLink key={link.href} href={link.href}>
                 {link.label}
               </NavLink>
@@ -69,7 +74,7 @@ export function SiteHeader() {
           </nav>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <div className="ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
           <LowBandwidthToggle />
           <ThemeToggle />
           <NetworkBadge />
@@ -96,7 +101,7 @@ export function SiteHeader() {
         className="border-t border-[var(--color-line)] bg-[var(--color-surface)] px-4 pb-2 sm:hidden"
       >
         <ul className="divide-y divide-[var(--color-line)]">
-          {LINKS.map((link) => (
+          {links.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}

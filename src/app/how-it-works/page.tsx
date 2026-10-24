@@ -93,7 +93,7 @@ export default function HowItWorksPage() {
 
         <div className="grid gap-6 md:grid-cols-2">
           {/* Step 1 detail */}
-          <Card className="p-5 space-y-3 border-l-4 border-l-blue-500">
+          <Card className="p-5 space-y-3 border-s-4 border-s-blue-500">
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded bg-blue-100 text-xs font-bold text-blue-800">
                 1
@@ -111,7 +111,7 @@ export default function HowItWorksPage() {
           </Card>
 
           {/* Step 2 detail */}
-          <Card className="p-5 space-y-3 border-l-4 border-l-amber-500">
+          <Card className="p-5 space-y-3 border-s-4 border-s-amber-500">
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded bg-amber-100 text-xs font-bold text-amber-800">
                 2
@@ -129,7 +129,7 @@ export default function HowItWorksPage() {
           </Card>
 
           {/* Step 3 detail */}
-          <Card className="p-5 space-y-3 border-l-4 border-l-violet-500">
+          <Card className="p-5 space-y-3 border-s-4 border-s-violet-500">
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded bg-violet-100 text-xs font-bold text-violet-800">
                 3
@@ -147,7 +147,7 @@ export default function HowItWorksPage() {
           </Card>
 
           {/* Step 4 detail */}
-          <Card className="p-5 space-y-3 border-l-4 border-l-indigo-500">
+          <Card className="p-5 space-y-3 border-s-4 border-s-indigo-500">
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 place-items-center rounded bg-indigo-100 text-xs font-bold text-indigo-800">
                 4
@@ -169,7 +169,7 @@ export default function HowItWorksPage() {
         <div className="mt-8 space-y-4">
           <h3 className="text-base font-semibold">5. Settlement: Pay or Refund</h3>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="p-5 border-l-4 border-l-emerald-500 bg-emerald-50/30">
+            <Card className="p-5 border-s-4 border-s-emerald-500 bg-emerald-50/30">
               <div className="font-semibold text-sm text-emerald-900">Outcome A: Care Paid</div>
               <p className="mt-2 text-xs text-[var(--color-ink-soft)] leading-relaxed">
                 When the dispute window expires with care confirmed, settlement can be triggered permissionlessly by anyone.
@@ -177,7 +177,7 @@ export default function HowItWorksPage() {
               </p>
             </Card>
 
-            <Card className="p-5 border-l-4 border-l-blue-500 bg-blue-50/30">
+            <Card className="p-5 border-s-4 border-s-blue-500 bg-blue-50/30">
               <div className="font-semibold text-sm text-blue-900">Outcome B: 100% Refunded</div>
               <p className="mt-2 text-xs text-[var(--color-ink-soft)] leading-relaxed">
                 If the patient never attends, or if care is not attested before the expiry deadline, the funder can trigger a complete refund.

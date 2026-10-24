@@ -50,3 +50,18 @@ test('fund a voucher for a clinic service', async ({ page }) => {
   await expect(page.getByText('History')).toBeVisible();
   await expect(page.getByText('Outpatient consult').first()).toBeVisible();
 });
+
+test('shows amount validation while typing without changing valid input', async ({ page }) => {
+  await page.goto(`/clinics/${CLINIC.address}`);
+
+  const amount = page.getByLabel('Amount (USDC)');
+  await amount.fill('2');
+  await expect(page.getByText('The listed price is $3.00. Enter at least that.')).toBeVisible();
+
+  await amount.fill('3.12345678');
+  await expect(page.getByText('Use no more than 7 decimal places.')).toBeVisible();
+
+  await amount.fill('3.25');
+  await expect(amount).toHaveValue('3.25');
+  await expect(page.getByText('Minimum $3.00. Up to 7 decimal places.')).toBeVisible();
+});

@@ -9,8 +9,12 @@ import {
   type GovernanceResponse,
   type Provider,
   type ProviderStats,
+  type ReadyStatus,
   type ReceiptsResponse,
+  type ServiceCatalogueItem,
+  type ServicesResponse,
   type Stats,
+  type VersionInfo,
   type Voucher,
   type VoucherDetail,
   type VoucherEvent,
@@ -220,6 +224,47 @@ export function useStats(config?: SWRConfiguration<Stats>) {
 }
 
 /**
+ * Hook for the indexer's readiness check (#168). A degraded answer is data,
+ * not an error; `error` is set only when the API cannot be reached at all.
+ */
+export function useReady(config?: SWRConfiguration<ReadyStatus>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ReadyStatus>(
+    'ready',
+    () => api.ready(),
+    config,
+  );
+
+  return {
+    ready: data ?? null,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for the indexer's build and deployment info (#168).
+ */
+export function useVersion(config?: SWRConfiguration<VersionInfo>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<VersionInfo>(
+    'version',
+    () => api.version(),
+    config,
+  );
+
+  return {
+    version: data ?? null,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
  * Hook for fetching and caching daily time-series protocol statistics (#50).
  */
 export function useDailyStats(days = 30, config?: SWRConfiguration<DailyStats>) {
@@ -255,6 +300,50 @@ export function useAttesters(
   return {
     attesters: data?.attesters ?? [],
     total: data?.total ?? 0,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for fetching and caching the service catalogue (GET /services).
+ */
+export function useServices(config?: SWRConfiguration<ServicesResponse>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ServicesResponse>(
+    'services',
+    () => api.services(),
+    config,
+  );
+
+  return {
+    services: data?.services ?? [],
+    total: data?.total ?? 0,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for fetching and caching a single service's clinic price comparison (GET /services/:code).
+ */
+export function useService(
+  code: number | null | undefined,
+  config?: SWRConfiguration<ServiceCatalogueItem>,
+) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ServiceCatalogueItem>(
+    code ? ['service', code] : null,
+    () => api.service(code!),
+    config,
+  );
+
+  return {
+    service: data ?? null,
     error: error instanceof Error ? error.message : error ? String(error) : null,
     rawError: error,
     isLoading,
@@ -308,6 +397,30 @@ export function useIsAttester(address: string | null | undefined) {
   };
 }
 
+/** Admin access requires the same wallet to administer both core contracts. */
+export function useAdminAccess(address: string | null | undefined) {
+  const { data, error, isLoading } = useSWR(
+    address ? ['adminAccess', address] : null,
+    async () => {
+      const { registry, voucher } = await import('../protocol');
+      const [registryAdmin, voucherAdmin] = await Promise.all([
+        registry.admin(),
+        voucher.admin(),
+      ]);
+      return { registryAdmin, voucherAdmin };
+    },
+  );
+
+  return {
+    isAdmin:
+      !!address &&
+      data?.registryAdmin === address &&
+      data?.voucherAdmin === address,
+    isLoading,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+  };
+}
+
 /**
  * Hook for fetching and caching the contract governance snapshot (#governance).
  *
@@ -342,7 +455,11 @@ export async function invalidateVouchers(voucherId?: string): Promise<void> {
   await globalMutate(
     (key) =>
       Array.isArray(key) &&
-      (key[0] === 'vouchers' || key[0] === 'receipts' || key[0] === 'voucher' || key[0] === 'voucher-events'),
+      (key[0] === 'vouchers' ||
+        key[0] === 'receipts' ||
+        key[0] === 'voucher' ||
+        key[0] === 'voucher-events' ||
+        key[0] === 'wallet-events'),
   );
 }
 

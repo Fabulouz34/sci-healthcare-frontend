@@ -3,7 +3,7 @@
 The web app for funders, clinics and attesters. Next.js 16, React 19,
 Tailwind 4, TypeScript.
 
-## Setup
+# # Setup
 
 Use Node 22 (`nvm use` reads `.nvmrc`). Its bundled npm 10 is what CI runs;
 a lockfile written by npm 11 drops entries npm 10 requires and fails `npm ci`.
@@ -38,7 +38,9 @@ service worker's rules are all written down there.
 
 Two sentences it makes concrete, and that the rest of this file depends on:
 **reads go to the indexer over HTTP, and writes go from the browser straight
-to Soroban RPC.** The backend is never in the write path.
+to Soroban RPC.** Optional testnet fee sponsorship adds a sign-only backend
+round trip before browser submission; see [the sponsor contract](docs/sponsored-fees.md).
+The sponsor never receives a wallet key and must not submit transactions.
 
 ## Non-negotiables
 

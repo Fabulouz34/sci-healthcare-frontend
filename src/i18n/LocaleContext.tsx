@@ -9,6 +9,7 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import { defaultLocale, isLocale, messages, type Locale } from './config';
+import { directionForLocale } from './direction';
 
 export const LOCALE_STORAGE_KEY = 'sci-locale';
 
@@ -97,8 +98,19 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
     window.dispatchEvent(new Event(LOCALE_CHANGE_EVENT));
   }, []);
 
+  /**
+   * The document carries the language and the reading direction (#5, #131).
+   * The direction comes from the locale through `directionForLocale`, so a
+   * right-to-left catalogue flips the layout without touching a component:
+   * the logical utilities read the `dir` attribute. It is written in the
+   * same effect as `lang` because both are properties of the chosen
+   * language, and writing one without the other would translate the text
+   * but leave it laid out the wrong way round.
+   */
   useEffect(() => {
-    document.documentElement.lang = locale;
+    const root = document.documentElement;
+    root.lang = locale;
+    root.dir = directionForLocale(locale);
   }, [locale]);
 
   const t = useCallback(

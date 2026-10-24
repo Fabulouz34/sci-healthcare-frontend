@@ -15,7 +15,9 @@
  */
 
 export type MockRpcCall = {
-  kind: 'invoke' | 'read';
+  /** `change_trust` is the classic USDC trustline operation (#1), not a
+   *  contract call: `contractId` is the USDC contract the line backs. */
+  kind: 'invoke' | 'read' | 'change_trust';
   contractId: string;
   method: string;
 };
@@ -23,6 +25,12 @@ export type MockRpcCall = {
 declare global {
   interface Window {
     __SCI_MOCK_WALLET__?: { address: string };
+    /**
+     * Simulates the wallet submitting a SEP-7 transaction (#162). Until it is
+     * set the poller keeps waiting; once present the funding panel reports
+     * the hash and moves to its success state.
+     */
+    __SCI_MOCK_SEP7__?: { hash: string };
     __SCI_MOCK_RPC__?: {
       calls: MockRpcCall[];
       /**
@@ -32,7 +40,12 @@ declare global {
        */
       args: string[][];
       delayMs?: number;
+      reads?: Record<string, unknown>;
     };
+    /** Playwright: the mock wallet has no USDC trustline yet (#1). */
+    __SCI_NO_TRUSTLINE__?: boolean;
+    /** Playwright: the mock wallet refuses to sign, as a real one can (#1). */
+    __SCI_MOCK_SIGN_REJECT__?: boolean;
   }
 }
 
@@ -54,6 +67,11 @@ export function recordMockCall(call: MockRpcCall, args: string[] = []): void {
   mock.args.push(args);
 }
 
+/** True once Playwright has made the mock wallet refuse to sign (#1). */
+export function mockSignRejects(): boolean {
+  return typeof window !== 'undefined' && Boolean(window.__SCI_MOCK_SIGN_REJECT__);
+}
+
 /**
  * How long a mock write should stay in flight, in milliseconds. Lets a test
  * hold a transaction pending long enough to observe the unload guard.
@@ -62,4 +80,18 @@ export function mockRpcDelayMs(): number {
   if (typeof window === 'undefined') return 0;
   const delay = window.__SCI_MOCK_RPC__?.delayMs ?? 0;
   return Number.isFinite(delay) && delay > 0 ? delay : 0;
+}
+
+export function mockRpcRead(contractId: string, method: string): unknown {
+  return window.__SCI_MOCK_RPC__?.reads?.[`${contractId}:${method}`];
+}
+
+/**
+ * The mock SEP-7 submission, or null while the "wallet" has not submitted.
+ * Set by a Playwright test with `page.evaluate`.
+ */
+export function mockSep7Submission(): { hash: string } | null {
+  if (typeof window === 'undefined') return null;
+  const value = window.__SCI_MOCK_SEP7__;
+  return value?.hash ? { hash: value.hash } : null;
 }

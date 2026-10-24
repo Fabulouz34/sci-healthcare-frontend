@@ -81,5 +81,12 @@ export function useTheme(): 'light' | 'dark' {
 /**
  * Runs in the layout before first paint: mirrors `resolveTheme` without
  * React, so the correct palette is set before anything renders.
+ *
+ * Served as the static file `public/theme-init.js` and loaded with
+ * `next/script` rather than injected through `dangerouslySetInnerHTML`
+ * (#147): an inline script rendered by React goes through `innerHTML`, which
+ * Trusted Types rightly treats as a script-injection sink. Keeping the
+ * source here and asserting the two are identical (see theme.test.ts) stops
+ * the file and the app's notion of the theme from drifting apart.
  */
-export const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('${STORAGE_KEY}');var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch(e){}`;
+export const THEME_INIT_SCRIPT = `try{var t=localStorage.getItem('${STORAGE_KEY}');var d=t==='dark'||(t!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=d?'dark':'light';}catch{}`;

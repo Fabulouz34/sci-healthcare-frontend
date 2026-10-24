@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { sameOriginScriptUrl } from '@/lib/trusted-types';
+
 /**
  * Registers the offline shell service worker (#74).
  *
@@ -23,10 +25,16 @@ export function ServiceWorkerRegistration() {
     if (process.env.NODE_ENV !== 'production') return;
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {
-      // Offline support is a convenience; a rejected registration must not
-      // surface as an error to a user who is simply using the app.
-    });
+    // `register` is a TrustedScriptURL sink (#147): the CSP only lets a
+    // `TrustedScriptURL` through, so the path goes via the allowlisted
+    // `sci-healthcare` policy. Same-origin only, and a plain string in
+    // browsers without Trusted Types.
+    navigator.serviceWorker
+      .register(sameOriginScriptUrl('/sw.js'), { scope: '/' })
+      .catch(() => {
+        // Offline support is a convenience; a rejected registration must
+        // not surface as an error to a user who is simply using the app.
+      });
   }, []);
 
   return null;

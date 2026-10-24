@@ -7,6 +7,7 @@ import { explorerAccount } from '@/lib/config';
 import { useAttesters } from '@/lib/hooks';
 import { CopyValue } from '@/components/CopyValue';
 import { Alert, Card, Empty, ExplorerLink } from '@/components/ui';
+import { SkeletonRow } from '@/components/Skeleton';
 
 export default function AttestersPage() {
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -42,7 +43,11 @@ export default function AttestersPage() {
       {error && <Alert>{error}</Alert>}
 
       {isLoading && (
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading attesters…</p>
+        <Card className="space-y-4 p-5">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
       )}
 
       {!isLoading && attesters.length === 0 && (
@@ -58,15 +63,15 @@ export default function AttestersPage() {
           {/* One table, reflowed into cards below `sm`: five columns cannot
               be read at 360px. */}
           <Card className="overflow-x-auto p-4">
-            <table className="block w-full text-left text-sm sm:table">
+            <table className="block w-full text-start text-sm sm:table">
               <caption className="sr-only">Directory of authorized attesters</caption>
               <thead className="hidden sm:table-header-group">
                 <tr className="border-b border-[var(--color-line)] text-xs text-[var(--color-ink-soft)]">
                   <th scope="col" className="pb-3 font-medium">Attester / Organisation</th>
                   <th scope="col" className="pb-3 font-medium">Stellar address</th>
-                  <th scope="col" className="pb-3 text-right font-medium">Confirmations</th>
+                  <th scope="col" className="pb-3 text-end font-medium">Confirmations</th>
                   <th scope="col" className="pb-3 font-medium">Added</th>
-                  <th scope="col" className="pb-3 text-right font-medium">Status</th>
+                  <th scope="col" className="pb-3 text-end font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="block space-y-3 sm:table-row-group sm:space-y-0 sm:divide-y sm:divide-[var(--color-line)]">
@@ -91,7 +96,7 @@ export default function AttestersPage() {
                         <CopyValue value={a.address} buttonOnly label="attester address" />
                       </span>
                     </td>
-                    <td className="mt-3 flex items-center justify-between text-sm sm:mt-0 sm:table-cell sm:py-3.5 sm:text-right">
+                    <td className="mt-3 flex items-center justify-between text-sm sm:mt-0 sm:table-cell sm:py-3.5 sm:text-end">
                       <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
                         Confirmations
                       </span>
@@ -103,7 +108,7 @@ export default function AttestersPage() {
                       </span>
                       <span>{formatDate(a.addedAt)}</span>
                     </td>
-                    <td className="mt-2 flex items-center justify-between text-right sm:mt-0 sm:table-cell sm:py-3.5">
+                    <td className="mt-2 flex items-center justify-between text-end sm:mt-0 sm:table-cell sm:py-3.5">
                       <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
                         Status
                       </span>

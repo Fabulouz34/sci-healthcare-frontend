@@ -5,10 +5,11 @@ which file to open first, and which way the data moves. It is a map, not a
 reference — the code stays the source of truth, and every claim here points at
 the file that makes it true.
 
-The short version: **this app never holds a key and never writes through a
-backend.** Reads go to the indexer over HTTP; writes go from the browser
-straight to Soroban RPC after the user's wallet signs them. Everything else
-in this document is detail on those two sentences.
+The short version: **the wallet signs and the browser submits to Soroban RPC.**
+Reads go to the indexer over HTTP. Optional testnet fee sponsorship sends the
+signed envelope to a sign-only sponsor before browser submission; wallet keys
+remain in the wallet. See [sponsored fees](sponsored-fees.md) for this exception
+and its separate backend dependency.
 
 ## Contents
 
@@ -79,6 +80,11 @@ Two edges carry everything:
   to sign it, and submits it to Soroban RPC. The indexer notices the event
   afterwards and the app re-reads to catch up.
 
+Optional sponsored funding inserts `stellar → sponsorship → sponsor` after
+wallet signing and before RPC submission. The sponsor returns a signed outer
+fee-bump envelope; the browser validates it and submits it. The indexer remains
+a read model, and the sponsor service must not submit on the browser's behalf.
+
 ## Pages
 
 Every data-bearing page is a **client component** (`'use client'`): the data
@@ -91,6 +97,7 @@ keep in sync. Two routes are static server components (`/how-it-works`,
 | `/` | `src/app/page.tsx` | `useLiveUpdates`, `useProviders`, `useStats`, `useLowBandwidth` | Clinic directory; the map is a `next/dynamic` import with `ssr: false` |
 | `/clinics/[address]` | `src/app/clinics/[address]/page.tsx` | `useProvider`, `useVouchers`, `useSavedIdentity` | The funding flow: quote, create, XLM swap |
 | `/my` | `src/app/my/page.tsx` | `useLiveUpdates`, `useProviders`, `useReceipts`, `useVouchers` | Funded vouchers, care-history lookup, CSV export |
+| `/my/transactions` | `src/app/my/transactions/page.tsx` | `useLiveUpdates`, `useWalletHistory` | The wallet's own transactions, newest first, each linked to the chain |
 | `/my/print` | `src/app/my/print/page.tsx` | `useProviders`, `useReceipts`, `useSavedIdentity` | Printable care summary |
 | `/clinic` | `src/app/clinic/page.tsx` | `useProvider`, `useVouchers`, `useLiveUpdates` | Clinic-side writes: register, list services, mark seen |
 | `/attest` | `src/app/attest/page.tsx` | `useIsAttester`, `useLiveUpdates`, `useVouchers`, `useNow` | Attester queue, sorted by urgency |
@@ -146,14 +153,18 @@ paint over the footer.
 ## Hooks and the cache
 
 `src/lib/hooks/` is the whole read surface — `index.ts` re-exports
-`useData`, `useLiveUpdates`, `useNames` and `useNow`. Every data hook is a
-thin SWR wrapper: same key, same fetcher, same shape of return value.
+`useData`, `useLiveUpdates`, `useNames`, `useNow` and `useWalletHistory`.
+Every data hook is a thin SWR wrapper: same key, same fetcher, same shape of
+return value. `useWalletHistory` is the exception: the indexer has no
+wallet-scoped event log, so it reads the wallet's vouchers and then their
+event logs, a few at a time.
 
 | Hook | SWR key | Endpoint |
 | --- | --- | --- |
 | `useVoucher(id)` | `['voucher', id]` | `GET /vouchers/:id` |
 | `useVoucherEvents(id)` | `['voucher-events', id]` | `GET /vouchers/:id/events` |
 | `useVouchers(params)` | `['vouchers', params]` | `GET /vouchers` |
+| `useWalletHistory(address)` | `['wallet-events', voucherIds]` | `GET /vouchers` + `GET /vouchers/:id/events` |
 | `useProvider(address)` | `['provider', address]` | `GET /providers/:address` |
 | `useProviders(params)` | `['providers', params ?? {}]` | `GET /providers` |
 | `useStats()` | `'stats'` | `GET /stats` |
@@ -168,7 +179,8 @@ Each hook returns `{ data, error, rawError, isLoading, isValidating, mutate }`.
 Two helpers keep the cache honest after a write:
 
 - `invalidateVouchers(voucherId?)` — the voucher, its event log, and every
-  `vouchers` / `receipts` / `voucher` / `voucher-events` key.
+  `vouchers` / `receipts` / `voucher` / `voucher-events` / `wallet-events`
+  key.
 - `invalidateProvider(providerAddress?)` — the provider and every `providers` /
   `provider` key.
 
@@ -271,6 +283,12 @@ polls `getTransaction` every 1.5s until it is final (45s ceiling). Simulation
 comes first on purpose: a transaction already known to fail must never reach
 a wallet prompt. `readContract` does the same call without a signature, from
 an unfunded account, so contract reads cost nothing.
+
+**`src/lib/sponsorship.ts`** — the opt-in testnet fee-bump client. Only a single
+`create_voucher` call may request it, within amount and fee caps. It checks the
+exact inner signed envelope and the sponsor signature before returning the
+fee bump to `stellar.ts`. Refusals never automatically fall back to user-paid
+fees. The backend independently enforces first-voucher eligibility and quotas.
 
 **`src/lib/wallet.tsx`** — the wallet. The app never holds, requests or
 transmits a secret key: the wallet kit signs, and the browser submits to RPC.
@@ -381,6 +399,13 @@ is deliberate or already known; none of them is a secret.
   `shouldRetryOnError: false` and the page renders the same timeline without
   transaction links, so "the indexer is too old" and "there are no events" look
   the same on screen.
+- **The event log does not say who signed a transaction.** It records the
+  event, the ledger and the transaction hash; the actor lives in the
+  contract's topics, which the indexer does not publish. Settling and
+  refunding are permissionless, so their signer is unknowable, and a voucher
+  does not carry its attester. The wallet's transaction history therefore
+  attributes only what the contract's own rules make certain, and says
+  "the signer is not recorded" for the rest (`src/lib/wallet-history.ts`).
 - **The generated bindings carry testnet contract ids** in an exported
   `networks` constant. The runtime path overrides them from `config`, so the
   app is correct, but the export is a trap.
@@ -392,8 +417,8 @@ The app is built to be testable without a chain and without a network.
 
 - **Unit** — Vitest, `environment: 'node'`, `src/**/*.test.ts`. The pure
   helpers: amounts, api, beneficiary, csv, disputes, errors, expiry, names,
-  protocol, reconcile, stellar, timeline, voucher-actions, plus the QR scanner
-  component.
+  protocol, reconcile, stellar, timeline, voucher-actions, wallet-history,
+  plus the QR scanner component.
 - **E2E** — Playwright, `tests/e2e/`. `mockBackend(page)` intercepts
   `http://localhost:8080/**` and serves the indexer's read model;
   `useMockWallet(page, address)` installs `window.__SCI_MOCK_WALLET__` and
@@ -425,7 +450,8 @@ Required: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_STELLAR_NETWORK`,
 `NEXT_PUBLIC_REGISTRY_CONTRACT_ID`, `NEXT_PUBLIC_VOUCHER_CONTRACT_ID`,
 `NEXT_PUBLIC_RECEIPT_CONTRACT_ID`, `NEXT_PUBLIC_USDC_CONTRACT_ID`.
 Optional: `NEXT_PUBLIC_FAUCET_CONTRACT_ID`, `NEXT_PUBLIC_USDC_ISSUER`,
-`NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_SENTRY_DSN`, `CSP_ENFORCE`.
+`NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_SENTRY_DSN`,
+`NEXT_PUBLIC_SPONSORED_FEES`, `CSP_ENFORCE`.
 
 `NEXT_PUBLIC_STELLAR_NETWORK` drives everything testnet-specific through one
 helper (`isTestnet`): the header badge, the faucet, the notices and the footer

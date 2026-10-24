@@ -128,7 +128,11 @@ export function DemoTour() {
             onClick={finish}
             className="inline-block text-sm text-[var(--color-brand)] underline underline-offset-2 hover:opacity-80"
           >
-            {step.cta} →
+            {step.cta}{' '}
+            {/* Points onwards, so it follows the reading direction (#131). */}
+            <span aria-hidden className="inline-block rtl-flip">
+              →
+            </span>
           </Link>
         </div>
       </Modal>

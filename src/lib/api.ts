@@ -1,12 +1,17 @@
 import {
+  ApiError,
   createClient,
   type Attester,
   type DailyStats,
   type ListProvidersParams,
   type ListVouchersParams,
   type Provider,
+  type ReadyStatus,
   type Receipt,
+  type ServiceCatalogueItem,
+  type ServicesResponse,
   type Stats,
+  type VersionInfo,
   type Voucher as ClientVoucher,
   type VoucherStatus,
 } from '@sci-healthcare/client';
@@ -31,10 +36,14 @@ export {
   type ListVouchersParams,
   type Provider,
   type ProviderLocation,
+  type ReadyStatus,
   type Receipt,
   type ReceiptsResponse,
   type Service,
+  type ServiceCatalogueItem,
+  type ServicesResponse,
   type Stats,
+  type VersionInfo,
   type VoucherStatus,
   type VouchersResponse,
 } from '@sci-healthcare/client';
@@ -199,6 +208,22 @@ export function parseVoucherEvents(body: unknown): VoucherEvent[] {
   );
 }
 
+/**
+ * True for a `GET /ready` body, whichever HTTP status it came with.
+ *
+ * A readiness probe conventionally answers 503 when degraded, with the same
+ * body — and that body is the useful part: it says which check failed.
+ */
+export function isReadyStatus(body: unknown): body is ReadyStatus {
+  if (!body || typeof body !== 'object') return false;
+  const { status, checks } = body as { status?: unknown; checks?: unknown };
+  return (
+    (status === 'ready' || status === 'degraded') &&
+    !!checks &&
+    typeof checks === 'object'
+  );
+}
+
 /** The shared client, pointed at the configured indexer. */
 const client = createClient({ baseUrl: config.apiUrl });
 
@@ -227,6 +252,30 @@ type AttestersResponse = {
 };
 
 export const api = {
+  /**
+   * Indexer readiness: database, indexed ledger and lag (#168).
+   *
+   * Fetched directly rather than through the shared client, whose error
+   * handling would discard the body of a degraded (503) answer. Anything
+   * that is not a readiness body — an unreachable host, a proxy error page —
+   * still throws, and the status page reports the API as unreachable.
+   */
+  ready: async (): Promise<ReadyStatus> => {
+    const base = config.apiUrl.replace(/\/+$/, '');
+    let res: Response;
+    try {
+      res = await fetch(`${base}/ready`, { headers: { accept: 'application/json' } });
+    } catch (cause) {
+      throw new ApiError(0, 'network_error', `Cannot reach the API at ${base}`, cause);
+    }
+    const body: unknown = await res.json().catch(() => null);
+    if (isReadyStatus(body)) return body;
+    throw new ApiError(res.status, `http_${res.status}`, res.statusText || 'Readiness check failed');
+  },
+
+  /** Build version, commit and network the indexer is running (#168). */
+  version: (): Promise<VersionInfo> => client.version(),
+
   stats: (): Promise<Stats> => client.stats(),
 
   dailyStats: (days = 30): Promise<DailyStats> => client.dailyStats(days),
@@ -306,6 +355,10 @@ export const api = {
 
   attester: (address: string): Promise<Attester> =>
     client.rawGet<Attester>(`/attesters/${encodeURIComponent(address)}`),
+
+  services: (): Promise<ServicesResponse> => client.services(),
+
+  service: (code: number): Promise<ServiceCatalogueItem> => client.service(code),
 
   /**
    * Contract governance snapshot: who controls each contract, pending admin

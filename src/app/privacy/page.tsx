@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+import { AnalyticsToggle } from '@/components/AnalyticsToggle';
 import { Card } from '@/components/ui';
 
 export const metadata: Metadata = {
@@ -52,7 +53,7 @@ export default function PrivacyPage() {
         </p>
 
         <div className="overflow-x-auto rounded-xl border border-[var(--color-line)]">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-start text-sm">
             <thead className="border-b border-[var(--color-line)] bg-[var(--color-canvas)] text-xs font-medium uppercase tracking-wider text-[var(--color-ink-soft)]">
               <tr>
                 <th className="px-4 py-3">Field</th>
@@ -191,6 +192,20 @@ export default function PrivacyPage() {
             <code className="rounded bg-[var(--color-canvas)] px-1 py-0.5 font-mono text-xs text-[var(--color-ink)]">beforeSend</code> scrubber redacts all 64-character hex strings, Stellar addresses, and sensitive URL query parameters. Session replay and user tracking remain completely disabled.
           </li>
         </ul>
+
+        <div className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-[var(--color-ink)]">Usage analytics</p>
+              <p className="mt-1 text-xs leading-relaxed text-[var(--color-ink-soft)]">
+                On by default, cookieless and identifier-free. Your browser&apos;s Do
+                Not Track signal is respected automatically. Turn it off here at any
+                time and no analytics script is loaded and no pageview is sent.
+              </p>
+            </div>
+            <AnalyticsToggle />
+          </div>
+        </div>
       </section>
 
       <section className="space-y-4">

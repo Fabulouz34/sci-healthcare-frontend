@@ -203,6 +203,12 @@ export async function mockApi(page: Page): Promise<void> {
     }
 
     if (parts[0] === 'providers') {
+      if (url.searchParams.get('status') === 'Pending') {
+        return json({
+          total: 1,
+          providers: [{ ...providersList.providers[0], status: 'Pending' }],
+        });
+      }
       // /providers/<address> — the last segment is the address.
       if (parts.length === 2) {
         const found = providersList.providers.find((p) => p.address === parts[1]);
@@ -213,6 +219,17 @@ export async function mockApi(page: Page): Promise<void> {
     }
 
     if (parts[0] === 'vouchers') {
+      if (url.searchParams.get('status') === 'Disputed') {
+        return json({
+          total: 1,
+          vouchers: [{
+            ...voucherDetail,
+            funder: 'GFUNDERAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXYZ',
+            status: 'Disputed',
+            disputeReason: 2,
+          }],
+        });
+      }
       // /vouchers/<id>/events — a pre-#13 indexer answers 404, so the
       // timeline snapshot shows dates without "view transaction" links.
       if (parts.length === 3 && parts[2] === 'events') {

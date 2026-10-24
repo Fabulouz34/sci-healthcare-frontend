@@ -38,3 +38,18 @@ test('maps clinics with coordinates and lists the rest below', async ({ page }) 
   // The located clinic lives on the map only.
   await expect(page.getByText('Ikeja General Clinic')).toHaveCount(0);
 });
+
+test('a map that fails to load leaves the rest of the directory up (#169)', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Lekki Care Centre')).toBeVisible();
+
+  // The map's code is fetched only when the view opens; failing that chunk
+  // is a map crash the user can actually meet on a flaky connection.
+  await page.route('**/_next/static/chunks/**', (route) => route.abort());
+  await page.getByRole('button', { name: 'Map' }).click();
+
+  await expect(page.getByText('The map could not be shown')).toBeVisible();
+  await expect(page.getByText('Clinics without a published location')).toBeVisible();
+  await expect(page.getByText('Lekki Care Centre')).toBeVisible();
+  await expect(page.getByText('Something went wrong')).toHaveCount(0);
+});

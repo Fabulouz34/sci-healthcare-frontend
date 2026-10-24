@@ -11,7 +11,7 @@ import {
 } from 'react';
 
 import { config } from './config';
-import { mockWalletAddress } from './e2e-seam';
+import { mockSignRejects, mockWalletAddress } from './e2e-seam';
 import {
   PASSKEY_WALLET_ID,
   PasskeyModule,
@@ -20,6 +20,12 @@ import {
   signWithPasskey,
 } from './passkey';
 import { checkAccountFunded, getAccountSpendableBalance } from './stellar';
+import {
+  WALLET_CONNECT_WALLET_ID,
+  isWalletConnectConfigured,
+  walletConnectChainId,
+  walletConnectMetadata,
+} from './wallet-connect';
 
 /**
  * Wallet connection.
@@ -45,6 +51,7 @@ export type WalletState = {
   isLowXlm: boolean;
   spendableXlm: number | null;
   error: string | null;
+  networkMismatch: boolean;
   connect: (walletId?: string) => Promise<void>;
   disconnect: () => Promise<void>;
   signTransaction: (xdr: string) => Promise<string>;
@@ -61,6 +68,7 @@ let initPromise: Promise<void> | null = null;
 function getWalletDisplayName(id: string | null | undefined): string {
   if (!id) return 'Connected Wallet';
   if (id === PASSKEY_WALLET_ID) return 'Passkey Smart Wallet';
+  if (id === WALLET_CONNECT_WALLET_ID) return 'WalletConnect';
   if (/freighter/i.test(id)) return 'Freighter';
   if (/xbull/i.test(id)) return 'xBull Wallet';
   if (/albedo/i.test(id)) return 'Albedo';
@@ -68,6 +76,15 @@ function getWalletDisplayName(id: string | null | undefined): string {
   if (/rabet/i.test(id)) return 'Rabet';
   if (/hana/i.test(id)) return 'Hana Wallet';
   return id;
+}
+
+function getNetworkName(passphrase: string): string {
+  if (passphrase === 'Public Global Stellar Network ; September 2015') {
+    return 'Public network';
+  }
+  if (passphrase === 'Test SDF Network ; September 2015') return 'Testnet';
+  if (passphrase === 'Test SDF Future Network ; October 2022') return 'Futurenet';
+  return passphrase;
 }
 
 /** Loads the kit and initialises it exactly once. */
@@ -90,11 +107,44 @@ function ensureInit(): Promise<void> {
         : config.network === 'futurenet'
           ? Networks.FUTURENET
           : Networks.TESTNET;
+
+    // Passkey and the extension wallets that need no configuration. The
+    // WalletConnect module is added below only when a project id is set, so
+    // deployments that do not want mobile wallets keep the small bundle.
+    const modules: import('@creit.tech/stellar-wallets-kit').ModuleInterface[] = [
+      new PasskeyModule() as unknown as import('@creit.tech/stellar-wallets-kit').ModuleInterface,
+      ...defaultModules(),
+    ];
+
+    if (isWalletConnectConfigured()) {
+      try {
+        const { WalletConnectModule, WalletConnectTargetChain } = await import(
+          '@creit.tech/stellar-wallets-kit/modules/wallet-connect'
+        );
+        const chain = walletConnectChainId(config.network);
+        const origin =
+          typeof window !== 'undefined'
+            ? window.location.origin
+            : 'https://sci-healthcare.vercel.app';
+        modules.push(
+          new WalletConnectModule({
+            projectId: config.walletConnectProjectId.trim(),
+            metadata: walletConnectMetadata(origin),
+            allowedChains: [
+              chain === 'stellar:pubnet'
+                ? WalletConnectTargetChain.PUBLIC
+                : WalletConnectTargetChain.TESTNET,
+            ],
+          }) as unknown as import('@creit.tech/stellar-wallets-kit').ModuleInterface,
+        );
+      } catch {
+        // A bad project id or a blocked AppKit bundle must not take the
+        // extension and passkey wallets down with it.
+      }
+    }
+
     StellarWalletsKit.init({
-      modules: [
-        new PasskeyModule() as unknown as import('@creit.tech/stellar-wallets-kit').ModuleInterface,
-        ...defaultModules(),
-      ],
+      modules,
       selectedWalletId: FREIGHTER_ID,
       network,
     });
@@ -117,6 +167,8 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isLowXlm, setIsLowXlm] = useState(false);
   const [spendableXlm, setSpendableXlm] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [walletNetworkName, setWalletNetworkName] = useState<string | null>(null);
+  const [networkMismatch, setNetworkMismatch] = useState(false);
 
   // Restore a previous session silently (#59).
   useEffect(() => {
@@ -178,6 +230,54 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!address) return;
+
+    let cancelled = false;
+    let latestCheck = 0;
+    const checkNetwork = async () => {
+      const check = ++latestCheck;
+      const clearNetwork = () => {
+        if (!cancelled && check === latestCheck) {
+          setWalletNetworkName(null);
+          setNetworkMismatch(false);
+        }
+      };
+
+      if (mockWalletAddress() || walletName === 'Passkey Smart Wallet') {
+        clearNetwork();
+        return;
+      }
+
+      try {
+        const savedWalletId = window.localStorage.getItem(SELECTED_WALLET_ID_KEY);
+        if (savedWalletId === PASSKEY_WALLET_ID) {
+          clearNetwork();
+          return;
+        }
+        const kit = await getKit();
+        const { networkPassphrase } = await kit.getNetwork();
+        if (typeof networkPassphrase !== 'string' || !networkPassphrase) {
+          clearNetwork();
+          return;
+        }
+        if (!cancelled && check === latestCheck) {
+          setWalletNetworkName(getNetworkName(networkPassphrase));
+          setNetworkMismatch(networkPassphrase !== config.networkPassphrase);
+        }
+      } catch {
+        clearNetwork();
+      }
+    };
+
+    void checkNetwork();
+    window.addEventListener('focus', checkNetwork);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', checkNetwork);
+    };
+  }, [address, walletName]);
 
   // Check if connected account exists on network (#60) and has enough XLM for fees (#61).
   useEffect(() => {
@@ -285,12 +385,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsUnfunded(false);
       setIsLowXlm(false);
       setSpendableXlm(null);
+      setWalletNetworkName(null);
+      setNetworkMismatch(false);
     }
   }, []);
 
   const signTransaction = useCallback(
     async (xdr: string) => {
       if (!address) throw new Error('Connect a wallet first');
+      if (mockWalletAddress()) {
+        // Test seam (#1): a test can make the mock wallet refuse to sign so
+        // the rejection path is covered without a real wallet extension.
+        if (mockSignRejects()) throw new Error('User rejected the transaction in the wallet');
+        return xdr;
+      }
+      if (networkMismatch) throw new Error('Switch your wallet to the app network before signing');
       if (mockWalletAddress()) return xdr;
 
       const savedWalletId = (() => {
@@ -312,7 +421,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       });
       return signedTxXdr;
     },
-    [address],
+    [address, networkMismatch],
   );
 
   const value = useMemo(
@@ -324,6 +433,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       isLowXlm,
       spendableXlm,
       error,
+      networkMismatch,
       connect,
       disconnect,
       signTransaction,
@@ -336,6 +446,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       isLowXlm,
       spendableXlm,
       error,
+      networkMismatch,
       connect,
       disconnect,
       signTransaction,
@@ -343,7 +454,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <WalletContext.Provider value={value}>{children}</WalletContext.Provider>
+    <WalletContext.Provider value={value}>
+      {networkMismatch && (
+        <div
+          role="alert"
+          className="fixed inset-x-0 top-0 z-[100] border-b border-amber-500 bg-amber-50 px-4 py-3 text-center text-sm font-medium text-amber-950"
+        >
+          Wallet network mismatch: {walletNetworkName} is selected, but this app
+          uses {getNetworkName(config.networkPassphrase)}. Switch your wallet
+          network to continue.
+        </div>
+      )}
+      <div inert={networkMismatch} style={{ display: 'contents' }}>
+        {children}
+      </div>
+    </WalletContext.Provider>
   );
 }
 

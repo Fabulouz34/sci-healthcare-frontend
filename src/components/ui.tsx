@@ -50,7 +50,7 @@ export function Button({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex max-sm:min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed ${styles} ${className}`}
+      className={` inline-flex max-sm:min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed ${styles} ${className}`}
     >
       {children}
     </button>
@@ -104,15 +104,37 @@ export function Alert({
   );
 }
 
-export function Empty({ children }: { children: ReactNode }) {
+/**
+ * Helpful empty state.
+ *
+ * Every list should pass a specific `title`, a short `description` explaining
+ * what to do next, and a primary `action` (e.g. fund care, list a service,
+ * find a clinic). children remain supported for backwards compatibility.
+ */
+export function Empty({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title?: string;
+  description?: ReactNode;
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
     <div className="rounded-xl border border-dashed border-[var(--color-line)] px-6 py-12 text-center text-sm text-[var(--color-ink-soft)]">
-      {children}
+      {title && (
+        <p className="text-base font-semibold text-[var(--color-ink)]">{title}</p>
+      )}
+      {description && <div className="mt-1.5">{description}</div>}
+      {children && <div className={title || description ? 'mt-1.5' : ''}>{children}</div>}
+      {action && <div className="mt-4 flex justify-center">{action}</div>}
     </div>
   );
 }
 
-export function ExplorerLink({ href, children }: { href: string; children: ReactNode }) {
+export function ExplorerLink( { href, children }: { href: string; children: ReactNode }) {
   return (
     <a
       href={href}
@@ -125,7 +147,7 @@ export function ExplorerLink({ href, children }: { href: string; children: React
   );
 }
 
-export function NavLink({ href, children }: { href: string; children: ReactNode }) {
+export function NavLink( { href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
@@ -141,7 +163,7 @@ export function NavLink({ href, children }: { href: string; children: ReactNode 
  *
  * - Focus moves into the dialog on open and returns to the trigger on close.
  * - `Escape` closes; Tab cycles inside (focus trap).
- * - Backdrop click closes. `aria-modal` + labelled title for screen readers.
+ * - Backdrop click closes. `aria-modal`+ labelled title for screen readers.
  *
  * Built on a plain div + portal rather than `<dialog>` so styling and the
  * trap behave identically in every browser the wallet kit supports.
@@ -266,10 +288,16 @@ export function Tooltip({
   const [visible, setVisible] = useState(false);
   const id = useId();
 
+  /**
+   * Centred over the trigger in either direction (#131): `start-1/2` is the
+   * inline start edge, and the translate that pulls the box back over the
+   * trigger has to change sign with the direction, which is what the `rtl:`
+   * variant below does.
+   */
   const position =
     side === 'top'
-      ? 'bottom-full left-1/2 mb-2 -translate-x-1/2'
-      : 'top-full left-1/2 mt-2 -translate-x-1/2';
+      ? 'bottom-full start-1/2 mb-2 -translate-x-1/2 rtl:translate-x-1/2'
+      : 'top-full start-1/2 mt-2 -translate-x-1/2 rtl:translate-x-1/2';
 
   return (
     <span className="relative inline-flex items-center">
@@ -306,7 +334,7 @@ export function InfoTip({ content }: { content: ReactNode }) {
       <span
         tabIndex={0}
         aria-label="More information"
-        className="ml-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px] leading-none text-[var(--color-ink-soft)]"
+        className="ms-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px] leading-none text-[var(--color-ink-soft)]"
       >
         ?
       </span>

@@ -69,6 +69,9 @@ export default defineConfig({
     timeout: 180 * 1000,
     env: {
       NEXT_PUBLIC_API_URL: 'http://localhost:8080',
+      // The visual-only command captures the default (flag-off) deployment.
+      // E2E builds enable sponsorship to exercise the opt-in flow as well.
+      NEXT_PUBLIC_SPONSORED_FEES: process.argv.includes('tests/visual') ? 'false' : 'true',
       NEXT_PUBLIC_STELLAR_NETWORK: 'testnet',
       NEXT_PUBLIC_SOROBAN_RPC_URL: 'https://soroban-testnet.stellar.org',
       NEXT_PUBLIC_NETWORK_PASSPHRASE: 'Test SDF Network ; September 2015',
