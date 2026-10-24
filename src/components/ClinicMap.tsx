@@ -2,7 +2,7 @@
 
 import 'leaflet/dist/leaflet.css';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Map as LeafletMap } from 'leaflet';
 
 import { providerLocation, type Provider, type ProviderLocation } from '@/lib/api';
@@ -40,6 +40,10 @@ type Located = { provider: Provider; location: ProviderLocation };
 export function ClinicMap({ providers }: { providers: Provider[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
+  // Leaflet loads and draws inside an async effect, where a throw would be
+  // an unhandled rejection. Keeping it and throwing it during render hands
+  // it to the surrounding error boundary instead (#169).
+  const [failure, setFailure] = useState<unknown>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,7 +82,9 @@ export function ClinicMap({ providers }: { providers: Provider[] }) {
       if (located.length > 0) {
         map.fitBounds(bounds.pad(0.25), { maxZoom: 12 });
       }
-    })();
+    })().catch((err: unknown) => {
+      if (!cancelled) setFailure(err ?? new Error('The map failed to load'));
+    });
 
     return () => {
       cancelled = true;
@@ -86,6 +92,8 @@ export function ClinicMap({ providers }: { providers: Provider[] }) {
       mapRef.current = null;
     };
   }, [providers]);
+
+  if (failure) throw failure;
 
   return (
     <div

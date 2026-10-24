@@ -60,7 +60,10 @@
     "clinic": "Kliniki",
     "voucherContract": "Mkataba wa Vocha",
     "scanWithClinicScanner": "Changanua na kichanganuzi cha kliniki",
-    "ledgerNote": "Vocha hii inawakilisha ahadi ya amana kwenye daftari ya Stellar. Haina rekodi zozote za kibinafsi za matibabu au utambulisho."
+    "ledgerNote": "Vocha hii inawakilisha ahadi ya amana kwenye daftari ya Stellar. Haina rekodi zozote za kibinafsi za matibabu au utambulisho.",
+    "reportProblem": "Ripoti tatizo",
+    "reportProblemIntro": "Ni mfadhili pekee anayeweza kufungua mgogoro. Ikiwa wewe ni mgonjwa, jamaa, au mtu mwingine yeyote aliyegundua tatizo kwenye vocha hii, fungua ripoti. Inajazwa mapema na nambari ya umma ya vocha, hali, huduma na kliniki pekee — kamwe si rejeleo la mgonjwa.",
+    "reportProblemAction": "Ripoti tatizo"
   },
   "clinic": {
     "title": "Dawati la kliniki",
@@ -85,7 +88,56 @@
     "serviceNote": "Tumia kategoria ya jumla ya huduma, kamwe usiweke utambuzi wa ugonjwa. Misimbo iko wazi kwa umma. Bei mpya inatumika kwa vocha zinazofadhiliwa kuanzia sasa.",
     "incomingVouchers": "Vocha zinazoingia",
     "noIncoming": "Bado hakuna vocha kwa kliniki hii.",
-    "connectWallet": "Unganisha pochi ya kliniki ili kusimamia dawati hili."
+    "earnings": "Mapato",
+    "earningsNote": "Mtiririko wa fedha wa kliniki hii: huduma zilizolipwa, malipo yanayosubiri, na ada za itifaki zilizolipwa.",
+    "earningsSettled": "Imelipwa",
+    "earningsSettledDetail": "Vocha {count} · {net} halisi baada ya ada",
+    "earningsPending": "Malipo yanayosubiri",
+    "earningsPendingDetail": "{count} zilizodaiwa, kuthibitishwa au kupingwa, kabla ya ada",
+    "earningsFees": "Ada zilizolipwa",
+    "earningsFeesDetail": "Ada ya itifaki kwa huduma zilizolipwa",
+    "earningsMonthly": "Mapato ya kila mwezi",
+    "earningsMonthlyNote": "Zimepangwa kwa mwezi ambapo kila vocha ilifadhiliwa (UTC).",
+    "earningsMonth": "Mwezi",
+    "earningsTotal": "Jumla",
+    "earningsEmpty": "Bado hakuna mapato yaliyolipwa au yanayosubiri.",
+    "earningsUnavailable": "Mapato hayapatikani kwa sasa. Sehemu nyingine za dawati zinaendelea kufanya kazi.",
+    "filterByStatus": "Chuja kwa hali",
+    "allStatuses": "Zote",
+    "searchVoucherNumber": "Nambari ya vocha",
+    "searchVoucherPlaceholder": "k.m. 21 au #21",
+    "showingVouchers": "Inaonyesha vocha {shown} kati ya {total}",
+    "noMatchingVouchers": "Hakuna vocha inayolingana na utafutaji huu.",
+    "clearFilters": "Ondoa vichujio",
+    "connectWallet": "Unganisha pochi ya kliniki ili kusimamia dawati hili.",
+    "checklist": {
+      "title": "Kufikia malipo yako ya kwanza",
+      "note": "Hatua tano kuanzia kusajili hadi kupokea fedha. Kila hatua inageuka kijani ikikamilika.",
+      "progress": "Hatua {done} kati ya {total} zimekamilika",
+      "done": "Imekamilika",
+      "next": "Inayofuata",
+      "later": "Bado",
+      "allDone": "Hatua zote tano zimekamilika. Malipo yaliyolipwa yanaonekana katika Mapato.",
+      "steps": {
+        "register": "Sajili kliniki",
+        "verification": "Subiri uthibitisho",
+        "service": "Orodhesha huduma",
+        "claim": "Dai vocha",
+        "paid": "Lipwa"
+      },
+      "hints": {
+        "register": "Jaza fomu hapa chini kwa jina la kliniki na msimbo wa nchi.",
+        "waitingVerification": "Msimamizi anapaswa kuthibitisha kliniki. Ukurasa huu unanasishwa yenyewe.",
+        "suspended": "Kliniki hii imesimamishwa. Wasiliana na msimamizi ili irejeshwe.",
+        "listService": "Ongeza huduma yako ya kwanza na bei hapa chini ili wafadhili waweze kuinunua.",
+        "claimVoucher": "Vocha inakusubiri hapa chini. Weka alama ya mgonjwa kuonekana ili kuidai.",
+        "shareClinic": "Shiriki ukurasa wa kliniki yako ili wafadhili wakupate. Vocha ikiwasili, weka alama ya mgonjwa kuonekana.",
+        "waitingAttester": "Huduma imedaiwa. Mthibitishaji huru anaithibitisha kabla ya malipo.",
+        "waitingDisputeWindow": "Huduma imethibitishwa. Malipo hutolewa baada ya kipindi cha pingamizi kumalizika.",
+        "disputed": "Pingamizi limefunguliwa, kwa hiyo malipo yamezuiwa hadi msimamizi aliamue.",
+        "releasePayment": "Vocha iliyothibitishwa iko tayari hapa chini. Toa malipo ili upokee fedha."
+      }
+    }
   },
   "scanner": {
     "title": "Changanua QR ya vocha ya mgonjwa",
@@ -99,6 +151,7 @@
   "language": {
     "en": "English",
     "fr": "Français",
-    "sw": "Kiswahili"
+    "sw": "Kiswahili",
+    "select": "Chagua lugha"
   }
 }

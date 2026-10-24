@@ -3,6 +3,8 @@ import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import bundleAnalyzer from '@next/bundle-analyzer';
 import { parseSep24Anchors } from './src/lib/sep24-config';
 
+import { contentSecurityPolicy, contentSecurityPolicyHeaderName } from './src/lib/csp';
+
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
@@ -75,16 +77,6 @@ const REQUIRED_BUILD_VARS: RequiredVar[] = [
 
 /** Soroban contract ids are `C` plus 55 base32 characters. */
 const CONTRACT_ID_SHAPE = /^C[A-Z2-7]{55}$/;
-
-/** `https://host` for an absolute URL, or null when it is missing/unusable. */
-function originOf(value: string | undefined): string | null {
-  if (!value) return null;
-  try {
-    return new URL(value).origin;
-  } catch {
-    return null;
-  }
-}
 
 function isAbsoluteUrl(value: string): boolean {
   try {
@@ -178,20 +170,13 @@ function assertBuildConfig(phase: string): void {
 }
 
 /* -------------------------------------------------------------------------
- * Security headers (#73)
+ * Security headers (#73, #147)
  *
- * This app builds and signs financial transactions in the browser, so the
- * Content-Security-Policy is the difference between "an injected script
- * exfiltrates the user's balance" and "the browser refuses to load it". An
- * HTTP header is the only place it can live for a statically rendered app —
- * a `<meta>` tag cannot express `frame-ancestors` and would have to be
- * repeated in every page.
- *
- * The policy is assembled from the *same* build-time variables the client
- * bundle reads (`src/lib/config.ts`), so the origins allowed here cannot
- * drift from the origins the app actually calls: the indexer API, Soroban
- * RPC, Horizon, the wallet hosts the SEP-43 kit talks to, the map tiles and
- * the two optional third parties. Everything else is refused.
+ * The policy itself lives in `src/lib/csp.ts`: a pure function of the build
+ * environment, unit-tested in `src/lib/csp.test.ts`. It is the difference
+ * between "an injected script exfiltrates the user's balance" and "the
+ * browser refuses to load it", and it includes Trusted Types (#147) so the
+ * DOM sinks that script-src cannot see are covered too.
  *
  * Rollout: the policy is sent as `Content-Security-Policy-Report-Only` by
  * default, so a deployment can be exercised with real wallets while
@@ -301,8 +286,11 @@ function contentSecurityPolicy(): string {
 
 const securityHeaders = [
   {
-    key: CSP_ENFORCE ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only',
-    value: contentSecurityPolicy(),
+    key: contentSecurityPolicyHeaderName(process.env),
+    value: contentSecurityPolicy(
+      process.env,
+      process.env.NODE_ENV === 'development',
+    ),
   },
   // Never let a browser guess a type: the JSON read model must not be able
   // to render as script.

@@ -75,7 +75,7 @@ export function VoucherQr({
       {/* On-screen voucher presentation card */}
       <Card className="p-5 print:hidden">
         <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
-          <div className="space-y-3 flex-1 text-center sm:text-left">
+          <div className="space-y-3 flex-1 text-center sm:text-start">
             <div className="inline-flex items-center gap-2 rounded-full bg-[var(--color-brand-soft)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-brand)]">
               <span>{t('voucher.patientPass')}</span>
             </div>
@@ -149,8 +149,8 @@ export function VoucherQr({
       </Card>
 
       {/* Printable view (hidden on screen, visible on print) with ID in large type */}
-      <div className="hidden print:block print:p-6 print:m-0 print:bg-white text-black space-y-6">
-        <div className="border-b-2 border-slate-900 pb-4 flex justify-between items-start">
+      <div className="voucher-print-document hidden print:block print:m-0 print:bg-white print:p-4 text-black print:space-y-3">
+        <div className="flex items-start justify-between border-b-2 border-slate-900 pb-3">
           <div>
             <div className="text-xs uppercase font-bold tracking-wider text-slate-600">
               SCI Healthcare Protocol · Care Voucher
@@ -158,17 +158,17 @@ export function VoucherQr({
             <h1 className="text-xl font-bold mt-1">{t('voucher.voucherPassTitle')}</h1>
           </div>
           {amount && (
-            <div className="text-right">
+            <div className="text-end">
               <div className="mono text-xl font-bold">${amount} USDC</div>
             </div>
           )}
         </div>
 
-        <div className="p-6 border-4 border-slate-900 rounded-2xl bg-slate-50 text-center space-y-2">
+        <div className="space-y-1 rounded-2xl border-4 border-slate-900 bg-slate-50 p-3 text-center">
           <div className="text-xs uppercase font-semibold text-slate-600 tracking-wider">
             {t('voucher.voucherNumberUpper')}
           </div>
-          <div className="mono text-5xl font-extrabold tracking-tight text-slate-950 py-2">
+          <div className="mono py-1 text-4xl font-extrabold tracking-tight text-slate-950">
             #{voucherId}
           </div>
           <div className="text-xs text-slate-600">
@@ -176,8 +176,8 @@ export function VoucherQr({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6 items-center">
-          <div className="space-y-3 text-sm">
+        <div className="grid grid-cols-2 items-center gap-3">
+          <div className="space-y-2 text-sm">
             {serviceLabel && (
               <div>
                 <div className="text-xs font-semibold text-slate-500 uppercase">{t('voucher.service')}</div>
@@ -202,14 +202,14 @@ export function VoucherQr({
             </div>
           </div>
 
-          <div className="flex flex-col items-center justify-center p-3 border border-slate-300 rounded-xl bg-white">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-slate-300 bg-white p-2">
             {dataUrl && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={dataUrl}
                 alt={`QR code for voucher #${voucherId}`}
-                width={180}
-                height={180}
+                width={160}
+                height={160}
               />
             )}
             <span className="mt-1 text-[10px] mono text-slate-500">

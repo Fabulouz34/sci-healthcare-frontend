@@ -6,8 +6,11 @@ import {
   type ListVouchersParams,
   type Provider,
   type Receipt,
+  type ServiceCatalogueItem,
+  type ServicesResponse,
   type Stats,
   type Voucher as ClientVoucher,
+  type VoucherStatus,
 } from '@sci-healthcare/client';
 
 import { config } from './config';
@@ -33,6 +36,8 @@ export {
   type Receipt,
   type ReceiptsResponse,
   type Service,
+  type ServiceCatalogueItem,
+  type ServicesResponse,
   type Stats,
   type VoucherStatus,
   type VouchersResponse,
@@ -88,6 +93,29 @@ export type VoucherEvent = {
   voucherId?: string | number | null;
   /** Decoded payload; addresses and amounts are strings, never numbers. */
   data?: Record<string, unknown> | null;
+};
+
+/**
+ * A clinic's own throughput (`GET /providers/:address/stats`, backend #10).
+ *
+ * Counts are returned for every voucher status, zero included, so the desk
+ * can render the full breakdown without filling gaps itself. The settled
+ * value is the gross escrow released on settled care; the net the clinic
+ * received and the fee it paid live on each voucher (`settledNet`,
+ * `settledFee`).
+ *
+ * The endpoint is not in the vendored generated client yet, so the shape is
+ * declared locally and fetched through `rawGet`, like the attester routes.
+ */
+export type ProviderStats = {
+  address: string;
+  name: string;
+  status: string;
+  vouchers: number;
+  byStatus: Record<VoucherStatus, number>;
+  settledVouchers: number;
+  settledValue: string;
+  settledValueDisplay?: string;
 };
 
 /**
@@ -154,7 +182,40 @@ export const api = {
   provider: (address: string, init?: RequestInit): Promise<Provider> =>
     timedClient(init?.signal).provider(address),
 
+  /** Aggregate voucher counts and settled value for one clinic (backend #10). */
+  providerStats: (address: string): Promise<ProviderStats> =>
+    client.rawGet<ProviderStats>(`/providers/${encodeURIComponent(address)}/stats`),
+
   vouchers: (params: ListVouchersParams) => client.vouchers(params),
+
+  /**
+   * Every voucher received by a clinic, across list-route pages.
+   *
+   * The monthly earnings table needs the whole history, not the first page,
+   * and `/vouchers` caps a page at 100 rows. The walk stops on a short page
+   * or when the reported total is reached. `total` is read per page because
+   * a write can land mid-walk; either boundary still yields a complete list
+   * of what existed when the walk began, and SWR refetches on focus/live
+   * updates anyway.
+   */
+  providerVouchers: async (address: string): Promise<Voucher[]> => {
+    const pageSize = 100;
+    const all: Voucher[] = [];
+    for (;;) {
+      const page = await client.vouchers({
+        provider: address,
+        limit: pageSize,
+        offset: all.length,
+      });
+      all.push(...page.vouchers);
+      if (
+        page.vouchers.length < pageSize ||
+        (typeof page.total === 'number' && all.length >= page.total)
+      ) {
+        return all;
+      }
+    }
+  },
 
   voucher: async (id: string, init?: RequestInit): Promise<VoucherDetail> => {
     const voucher = await timedClient(init?.signal).voucher(id);
@@ -191,4 +252,8 @@ export const api = {
 
   attester: (address: string): Promise<Attester> =>
     client.rawGet<Attester>(`/attesters/${encodeURIComponent(address)}`),
+
+  services: (): Promise<ServicesResponse> => client.services(),
+
+  service: (code: number): Promise<ServiceCatalogueItem> => client.service(code),
 };

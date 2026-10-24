@@ -1,15 +1,29 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 
 import { formatUsdc, toAmountInput, toBaseUnits } from '@/lib/amounts';
+import type { VoucherStatus } from '@/lib/api';
+import { monthlyEarnings, summariseEarnings } from '@/lib/clinic-earnings';
 import { explorerTx } from '@/lib/config';
 import { humaniseError, REGISTRY_ERRORS } from '@/lib/errors';
-import { useLiveUpdates, useProvider, useVouchers } from '@/lib/hooks';
+import {
+  useLiveUpdates,
+  useProvider,
+  useProviderStats,
+  useProviderVouchers,
+  useVouchers,
+} from '@/lib/hooks';
 import { registry, type ProviderStanding } from '@/lib/protocol';
+import {
+  VOUCHER_STATUSES,
+  filterVouchers,
+  statusCounts,
+} from '@/lib/voucher-filters';
 import { useWallet } from '@/lib/wallet';
+import { ClinicChecklist } from '@/components/ClinicChecklist';
 import { QrScannerModal } from '@/components/QrScannerModal';
 import { VoucherRow } from '@/components/VoucherRow';
 import { useToast } from '@/components/Toast';
@@ -21,6 +35,44 @@ import { useLocaleContext } from '@/i18n/LocaleContext';
 /** null while loading; 'Unregistered' when the registry has no entry. */
 type Standing = ProviderStanding | 'Unregistered' | null;
 
+/**
+ * One status tab. `aria-pressed` rather than a tablist: the list below is not
+ * a separate panel, and a pressed filter button is announced as one.
+ */
+function StatusTab({
+  active,
+  count,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  count: number;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex max-sm:min-h-11 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+        active
+          ? 'border-transparent bg-[var(--color-brand)] text-white'
+          : 'border-[var(--color-line)] bg-white text-[var(--color-ink-soft)] hover:bg-[var(--color-canvas)] hover:text-[var(--color-ink)]'
+      }`}
+    >
+      <span>{children}</span>
+      <span
+        className={`rounded-full px-1.5 py-0.5 text-[11px] tabular-nums ${
+          active ? 'bg-white/20' : 'bg-[var(--color-canvas)]'
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
 const STANDING_TEXT: Record<Exclude<Standing, null>, string> = {
   Unregistered: 'This wallet is not registered as a clinic yet. Register below.',
   Pending:
@@ -29,6 +81,17 @@ const STANDING_TEXT: Record<Exclude<Standing, null>, string> = {
   Suspended:
     'This clinic is suspended. It cannot list services, receive new vouchers or claim funded ones. Contact the administrator.',
 };
+
+/** `YYYY-MM` as a localised short month and year, read in UTC. */
+function monthLabel(month: string, locale: string): string {
+  const [year, monthNumber] = month.split('-').map(Number);
+  const tag = locale === 'fr' ? 'fr-FR' : locale === 'sw' ? 'sw-KE' : 'en-GB';
+  return new Intl.DateTimeFormat(tag, {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, monthNumber - 1, 1)));
+}
 
 /**
  * Clinic desk.
@@ -54,6 +117,10 @@ export default function ClinicDeskPage() {
   const [price, setPrice] = useState('');
   // Delisting takes a second click, like disputing.
   const [confirmRemove, setConfirmRemove] = useState<number | null>(null);
+  // Incoming-voucher filters. A clerk reads one number off a patient's pass,
+  // so the list narrows by status and by that number, together.
+  const [statusFilter, setStatusFilter] = useState<VoucherStatus | null>(null);
+  const [search, setSearch] = useState('');
 
   // SWR cached reads (#63)
   const { provider, mutate: mutateProvider } = useProvider(address);
@@ -65,6 +132,34 @@ export default function ClinicDeskPage() {
     () => registry.providerStatus(address!),
   );
 
+  const standing: Standing =
+    status !== undefined
+      ? (status ?? 'Unregistered')
+      : provider
+        ? provider.status
+        : null;
+
+  // Only a registered clinic has statistics to read; an unregistered wallet
+  // would get a 404 from the endpoint on every page load.
+  const earningsAddress = standing && standing !== 'Unregistered' ? address : null;
+  const {
+    stats: clinicStats,
+    error: statsError,
+    mutate: mutateStats,
+  } = useProviderStats(earningsAddress);
+  const {
+    vouchers: earningsVouchers,
+    error: earningsError,
+    isLoading: earningsLoading,
+    mutate: mutateEarningsVouchers,
+  } = useProviderVouchers(earningsAddress);
+
+  const earnings = useMemo(() => summariseEarnings(earningsVouchers), [earningsVouchers]);
+  const months = useMemo(() => monthlyEarnings(earningsVouchers), [earningsVouchers]);
+  // Distinguish "nothing earned yet" from "the vouchers could not be read":
+  // the first is worth showing as zero, the second is not.
+  const earningsReady = !earningsLoading && !earningsError;
+
   // Live SSE stream with automatic fallback to polling (#64)
   useLiveUpdates({ providerAddress: address ?? undefined });
 
@@ -72,14 +167,9 @@ export default function ClinicDeskPage() {
     void mutateProvider();
     void mutateVouchers();
     void mutateStatus();
+    void mutateStats();
+    void mutateEarningsVouchers();
   };
-
-  const standing: Standing =
-    status !== undefined
-      ? (status ?? 'Unregistered')
-      : provider
-        ? provider.status
-        : null;
 
   const services = (provider?.services ?? []).filter((s) => s.active !== false);
 
@@ -115,6 +205,24 @@ export default function ClinicDeskPage() {
   }
 
   const editing = services.some((s) => String(s.code) === code);
+
+  // Counts cover the whole inbox, not the current search, so the tabs stay a
+  // map of what is waiting rather than shrinking as a number is typed.
+  const counts = statusCounts(vouchers);
+  const statusTabs = VOUCHER_STATUSES.filter(
+    (s) => counts[s] > 0 || s === statusFilter,
+  );
+  const visibleVouchers = filterVouchers(vouchers, {
+    status: statusFilter,
+    clinic: null,
+    search,
+  });
+  const filtering = statusFilter !== null || search.trim() !== '';
+
+  function clearFilters() {
+    setStatusFilter(null);
+    setSearch('');
+  }
 
   return (
     <div className="space-y-8">
@@ -160,6 +268,195 @@ export default function ClinicDeskPage() {
           router.push(`/vouchers/${voucherId}`);
         }}
       />
+
+      {standing !== null && (standing === 'Unregistered' || provider !== null) && (
+        <ClinicChecklist
+          status={standing}
+          services={provider?.services ?? []}
+          vouchers={earningsVouchers}
+        />
+      )}
+
+      {standing !== null && standing !== 'Unregistered' && (
+        <section aria-labelledby="clinic-earnings" className="space-y-5">
+          <div>
+            <h2 id="clinic-earnings" className="text-lg font-semibold">
+              {t('clinic.earnings')}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+              {t('clinic.earningsNote')}
+            </p>
+          </div>
+
+          {(statsError || earningsError) && (
+            <p className="text-sm text-[var(--color-ink-soft)]">
+              {t('clinic.earningsUnavailable')}
+            </p>
+          )}
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div role="group" aria-label={t('clinic.earningsSettled')}>
+              <Card className="h-full p-4">
+                <div className="text-xs uppercase tracking-wide text-[var(--color-ink-soft)]">
+                  {t('clinic.earningsSettled')}
+                </div>
+                <div className="mt-1 text-2xl font-bold">
+                  {clinicStats
+                    ? `$${formatUsdc(clinicStats.settledValue, locale)}`
+                    : earningsReady
+                      ? `$${formatUsdc(earnings.settled, locale)}`
+                      : '—'}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                  {earningsLoading
+                    ? t('common.loading')
+                    : t('clinic.earningsSettledDetail', {
+                        count: clinicStats?.settledVouchers ?? earnings.settledCount,
+                        net: earningsReady
+                          ? `$${formatUsdc(earnings.netReceived, locale)}`
+                          : '—',
+                      })}
+                </div>
+              </Card>
+            </div>
+
+            <div role="group" aria-label={t('clinic.earningsPending')}>
+              <Card className="h-full p-4">
+                <div className="text-xs uppercase tracking-wide text-[var(--color-ink-soft)]">
+                  {t('clinic.earningsPending')}
+                </div>
+                <div className="mt-1 text-2xl font-bold">
+                  {earningsReady ? `$${formatUsdc(earnings.pending, locale)}` : '—'}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                  {earningsLoading
+                    ? t('common.loading')
+                    : earningsReady
+                      ? t('clinic.earningsPendingDetail', {
+                          count: earnings.pendingCount,
+                        })
+                      : t('clinic.earningsUnavailable')}
+                </div>
+              </Card>
+            </div>
+
+            <div role="group" aria-label={t('clinic.earningsFees')}>
+              <Card className="h-full p-4">
+                <div className="text-xs uppercase tracking-wide text-[var(--color-ink-soft)]">
+                  {t('clinic.earningsFees')}
+                </div>
+                <div className="mt-1 text-2xl font-bold">
+                  {earningsReady ? `$${formatUsdc(earnings.fees, locale)}` : '—'}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                  {t('clinic.earningsFeesDetail')}
+                </div>
+              </Card>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-base font-semibold">{t('clinic.earningsMonthly')}</h3>
+              <p className="mt-0.5 text-xs text-[var(--color-ink-soft)]">
+                {t('clinic.earningsMonthlyNote')}
+              </p>
+            </div>
+
+            <Card className="p-4">
+              {earningsLoading ? (
+                <p className="text-sm text-[var(--color-ink-soft)]">
+                  {t('common.loading')}
+                </p>
+              ) : earningsError ? (
+                <p className="text-sm text-[var(--color-ink-soft)]">
+                  {t('clinic.earningsUnavailable')}
+                </p>
+              ) : months.length === 0 ? (
+                <Empty>{t('clinic.earningsEmpty')}</Empty>
+              ) : (
+                <table className="block w-full text-start text-sm sm:table">
+                  <caption className="sr-only">{t('clinic.earningsMonthly')}</caption>
+                  <thead className="hidden sm:table-header-group">
+                    <tr className="border-b border-[var(--color-line)] text-xs text-[var(--color-ink-soft)]">
+                      <th scope="col" className="pb-2 font-medium">
+                        {t('clinic.earningsMonth')}
+                      </th>
+                      <th scope="col" className="pb-2 text-end font-medium">
+                        {t('clinic.earningsSettled')}
+                      </th>
+                      <th scope="col" className="pb-2 text-end font-medium">
+                        {t('clinic.earningsPending')}
+                      </th>
+                      <th scope="col" className="pb-2 text-end font-medium">
+                        {t('clinic.earningsFees')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="block divide-y divide-[var(--color-line)] sm:table-row-group">
+                    {months.map((month) => (
+                      <tr
+                        key={month.month}
+                        className="grid grid-cols-3 gap-x-3 gap-y-1 py-3 sm:table-row sm:py-0"
+                      >
+                        <th
+                          scope="row"
+                          className="col-span-3 text-start font-medium sm:table-cell sm:py-2.5"
+                        >
+                          {monthLabel(month.month, locale)}
+                        </th>
+                        <td className="sm:table-cell sm:py-2.5 sm:text-end">
+                          <span className="block text-[10px] uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
+                            {t('clinic.earningsSettled')}
+                          </span>
+                          <span className="mono">${formatUsdc(month.settled, locale)}</span>
+                        </td>
+                        <td className="sm:table-cell sm:py-2.5 sm:text-end">
+                          <span className="block text-[10px] uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
+                            {t('clinic.earningsPending')}
+                          </span>
+                          <span className="mono">${formatUsdc(month.pending, locale)}</span>
+                        </td>
+                        <td className="sm:table-cell sm:py-2.5 sm:text-end">
+                          <span className="block text-[10px] uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
+                            {t('clinic.earningsFees')}
+                          </span>
+                          <span className="mono">${formatUsdc(month.fees, locale)}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="block border-t border-[var(--color-line)] font-medium sm:table-footer-group">
+                    <tr className="grid grid-cols-3 gap-x-3 gap-y-1 pt-3 sm:table-row sm:pt-0">
+                      <th scope="row" className="col-span-3 text-start sm:table-cell sm:py-2.5">
+                        {t('clinic.earningsTotal')}
+                      </th>
+                      <td className="sm:table-cell sm:py-2.5 sm:text-end">
+                        <span className="block text-[10px] uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
+                          {t('clinic.earningsSettled')}
+                        </span>
+                        <span className="mono">${formatUsdc(earnings.settled, locale)}</span>
+                      </td>
+                      <td className="sm:table-cell sm:py-2.5 sm:text-end">
+                        <span className="block text-[10px] uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
+                          {t('clinic.earningsPending')}
+                        </span>
+                        <span className="mono">${formatUsdc(earnings.pending, locale)}</span>
+                      </td>
+                      <td className="sm:table-cell sm:py-2.5 sm:text-end">
+                        <span className="block text-[10px] uppercase tracking-wide text-[var(--color-ink-soft)] sm:hidden">
+                          {t('clinic.earningsFees')}
+                        </span>
+                        <span className="mono">${formatUsdc(earnings.fees, locale)}</span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </Card>
+          </div>
+        </section>
+      )}
 
       {standing === 'Unregistered' && (
         <Card className="space-y-3 p-5">
@@ -316,13 +613,82 @@ export default function ClinicDeskPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('clinic.incomingVouchers')}</h2>
         {vouchers.length === 0 && <Empty>{t('clinic.noIncoming')}</Empty>}
+        {vouchers.length > 0 && (
+          <Card className="space-y-3 p-4">
+            <div
+              role="group"
+              aria-label={t('clinic.filterByStatus')}
+              className="flex flex-wrap gap-2"
+            >
+              <StatusTab
+                active={statusFilter === null}
+                count={vouchers.length}
+                onClick={() => setStatusFilter(null)}
+              >
+                {t('clinic.allStatuses')}
+              </StatusTab>
+              {statusTabs.map((s) => (
+                <StatusTab
+                  key={s}
+                  active={statusFilter === s}
+                  count={counts[s]}
+                  onClick={() => setStatusFilter(s)}
+                >
+                  {s}
+                </StatusTab>
+              ))}
+            </div>
+            <label className="block">
+              <span className="block text-xs uppercase tracking-wide text-[var(--color-ink-soft)]">
+                {t('clinic.searchVoucherNumber')}
+              </span>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t('clinic.searchVoucherPlaceholder')}
+                className="mono mt-1 w-full rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] px-3 py-2 text-sm sm:max-w-xs"
+              />
+            </label>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--color-ink-soft)]">
+              <span aria-live="polite">
+                {t('clinic.showingVouchers', {
+                  shown: visibleVouchers.length,
+                  total: vouchers.length,
+                })}
+              </span>
+              {filtering && (
+                <Button
+                  variant="ghost"
+                  className="px-3 py-1.5 text-xs"
+                  onClick={clearFilters}
+                >
+                  {t('clinic.clearFilters')}
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
+        {vouchers.length > 0 && visibleVouchers.length === 0 && (
+          <Empty>
+            {t('clinic.noMatchingVouchers')}{' '}
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="font-medium underline underline-offset-2 hover:no-underline"
+            >
+              {t('clinic.clearFilters')}
+            </button>
+          </Empty>
+        )}
         <div className="space-y-3">
-          {vouchers.map((v) => (
+          {visibleVouchers.map((v) => (
             <VoucherRow
               key={v.id}
               v={v}
               actions={['claim', 'settle']}
               onDone={refreshAll}
+              requirePatientMatch
             />
           ))}
         </div>

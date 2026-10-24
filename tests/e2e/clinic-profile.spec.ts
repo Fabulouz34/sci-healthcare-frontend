@@ -63,7 +63,7 @@ test('hides stats the API cannot provide', async ({ page }) => {
     vouchers: [],
   });
   // Registered last, so it takes precedence over the catch-all mock route.
-  await page.route('http://localhost:8080/vouchers**', (route) =>
+  await page.route('http://localhost:8080/vouchers?**', (route) =>
     route.fulfill({
       status: 500,
       contentType: 'application/json',
@@ -80,4 +80,23 @@ test('hides stats the API cannot provide', async ({ page }) => {
   // Missing fields are absent, not shown as zero or an em dash.
   await expect(page.getByText('Registered')).toHaveCount(0);
   await expect(page.getByText('Vouchers settled')).toHaveCount(0);
+});
+
+test('renders not-found for an invalid clinic address without network calls', async ({
+  page,
+}) => {
+  const requests = [] as string[];
+  page.on('request', (request) => requests.push(request.url()));
+
+  await mockBackend(page, { provider: CLINIC, vouchers: [] });
+
+  const response = await page.goto('/clinics/not-a-stellar-address');
+
+  // Next.js may answer an invalid dynamic segment with a 404 or a 200 page
+  // that renders the not-found state; the contract is the visible result and
+  // the absence of API calls, so only a missing response is treated as failure.
+  expect(response).not.toBeNull();
+  await expect(page.getByText(/not found/i)).toBeVisible();
+  expect(requests.filter((url) => url.includes('/providers'))).toHaveLength(0);
+  expect(requests.filter((url) => url.includes('/vouchers'))).toHaveLength(0);
 });

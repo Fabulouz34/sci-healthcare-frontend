@@ -3,8 +3,10 @@
 import { useMemo, useState } from 'react';
 
 import { formatUsdc } from '@/lib/amounts';
-import { useDailyStats, useProviders, useStats } from '@/lib/hooks';
+import { useDailyStats, useProviders, useStats, useVouchers } from '@/lib/hooks';
 import { Card, Empty } from '@/components/ui';
+import { DataTable } from '@/components/DataTable';
+import { WidgetBoundary } from '@/components/WidgetBoundary';
 
 type TimeRange = 7 | 14 | 30 | 90;
 
@@ -132,6 +134,7 @@ export default function StatsPage() {
   const { stats } = useStats();
   const { dailyStats, isLoading: dailyLoading } = useDailyStats(days);
   const { providers } = useProviders();
+  const { vouchers } = useVouchers({});
 
   // Aggregate country statistics
   const countryCounts = useMemo(() => {
@@ -144,6 +147,31 @@ export default function StatsPage() {
     }
     return Array.from(map.entries()).sort((a, b) => b[1].count - a[1].count);
   }, [providers]);
+
+  // Voucher activity per country: funded and settled counts plus settled value.
+  const countryVouchers = useMemo(() => {
+    const map = new Map<
+      string,
+      { funded: number; fundedValue: bigint; settled: number; settledValue: bigint }
+    >();
+    for (const v of vouchers) {
+      const country = String(v.provider?.country ?? '');
+      const entry =
+        map.get(country) ?? { funded: 0, fundedValue: 0n, settled: 0, settledValue: 0n };
+      if (v.status === 'Funded') {
+        entry.funded += 1;
+        entry.fundedValue += BigInt(v.amount || '0');
+      }
+      if (v.status === 'Settled') {
+        entry.settled += 1;
+        entry.settledValue += BigInt(v.amount || '0');
+      }
+      map.set(country, entry);
+    }
+    return Array.from(map.entries()).sort(
+      (a, b) => Number(b[1].settledValue - a[1].settledValue) || b[1].settled - a[1].settled,
+    );
+  }, [vouchers]);
 
   const series = useMemo(() => dailyStats?.series ?? [], [dailyStats]);
 
@@ -274,34 +302,45 @@ export default function StatsPage() {
               Total {days}d volume: ${formatUsdc(totalFundedVolume)}
             </p>
             <div className="mt-4">
-              <ActivityChart
-                title="Daily Vouchers Funded"
-                data={fundedSeries}
-                color="var(--color-brand)"
-              />
+              {/* One broken chart leaves the totals, tables and the other chart up (#169). */}
+              <WidgetBoundary label="This chart">
+                <ActivityChart
+                  title="Daily Vouchers Funded"
+                  data={fundedSeries}
+                  color="var(--color-brand)"
+                />
+              </WidgetBoundary>
             </div>
             {showTables && (
               <div className="mt-6 border-t border-[var(--color-line)] pt-4">
                 <div className="max-h-60 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
-                    <caption className="sr-only">Daily vouchers funded data table</caption>
-                    <thead>
-                      <tr className="border-b border-[var(--color-line)] text-[var(--color-ink-soft)]">
-                        <th scope="col" className="py-1.5 font-medium">Date (UTC)</th>
-                        <th scope="col" className="py-1.5 text-right font-medium">Count</th>
-                        <th scope="col" className="py-1.5 text-right font-medium">Volume (USDC)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--color-line)]">
-                      {series.map((s) => (
-                        <tr key={s.date}>
-                          <td className="py-1.5 font-mono">{s.date}</td>
-                          <td className="py-1.5 text-right">{s.funded.count}</td>
-                          <td className="py-1.5 text-right font-mono">${formatUsdc(s.funded.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable
+                    caption="Daily vouchers funded data table"
+                    rows={series}
+                    getRowKey={(row) => row.date}
+                    columns={[
+                      {
+                        key: 'date',
+                        header: 'Date (UTC)',
+                        accessor: (row) => row.date,
+                        className: 'font-mono',
+                      },
+                      {
+                        key: 'count',
+                        header: 'Count',
+                        accessor: (row) => row.funded.count,
+                        align: 'right',
+                      },
+                      {
+                        key: 'amount',
+                        header: 'Volume (USDC)',
+                        accessor: (row) => row.funded.amount,
+                        align: 'right',
+                        className: 'font-mono',
+                        render: (row) => `$${formatUsdc(row.funded.amount)}`,
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             )}
@@ -314,34 +353,44 @@ export default function StatsPage() {
               Total {days}d volume: ${formatUsdc(totalSettledVolume)}
             </p>
             <div className="mt-4">
-              <ActivityChart
-                title="Daily Care Settled"
-                data={settledSeries}
-                color="#059669"
-              />
+              <WidgetBoundary label="This chart">
+                <ActivityChart
+                  title="Daily Care Settled"
+                  data={settledSeries}
+                  color="#059669"
+                />
+              </WidgetBoundary>
             </div>
             {showTables && (
               <div className="mt-6 border-t border-[var(--color-line)] pt-4">
                 <div className="max-h-60 overflow-y-auto">
-                  <table className="w-full text-left text-xs">
-                    <caption className="sr-only">Daily care settled data table</caption>
-                    <thead>
-                      <tr className="border-b border-[var(--color-line)] text-[var(--color-ink-soft)]">
-                        <th scope="col" className="py-1.5 font-medium">Date (UTC)</th>
-                        <th scope="col" className="py-1.5 text-right font-medium">Count</th>
-                        <th scope="col" className="py-1.5 text-right font-medium">Volume (USDC)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[var(--color-line)]">
-                      {series.map((s) => (
-                        <tr key={s.date}>
-                          <td className="py-1.5 font-mono">{s.date}</td>
-                          <td className="py-1.5 text-right">{s.settled.count}</td>
-                          <td className="py-1.5 text-right font-mono">${formatUsdc(s.settled.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <DataTable
+                    caption="Daily care settled data table"
+                    rows={series}
+                    getRowKey={(row) => row.date}
+                    columns={[
+                      {
+                        key: 'date',
+                        header: 'Date (UTC)',
+                        accessor: (row) => row.date,
+                        className: 'font-mono',
+                      },
+                      {
+                        key: 'count',
+                        header: 'Count',
+                        accessor: (row) => row.settled.count,
+                        align: 'right',
+                      },
+                      {
+                        key: 'amount',
+                        header: 'Volume (USDC)',
+                        accessor: (row) => row.settled.amount,
+                        align: 'right',
+                        className: 'font-mono',
+                        render: (row) => `$${formatUsdc(row.settled.amount)}`,
+                      },
+                    ]}
+                  />
                 </div>
               </div>
             )}
@@ -353,7 +402,7 @@ export default function StatsPage() {
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Clinics by country</h2>
         <Card className="overflow-x-auto p-4">
-          <table className="block w-full text-left text-sm sm:table">
+          <table className="block w-full text-start text-sm sm:table">
             <caption className="sr-only">Registered clinics grouped by country</caption>
             <thead className="hidden sm:table-header-group">
               <tr className="border-b border-[var(--color-line)] text-xs text-[var(--color-ink-soft)]">
@@ -384,6 +433,58 @@ export default function StatsPage() {
                     </td>
                     <td className="block text-xs text-emerald-700 sm:table-cell sm:py-2.5 sm:text-sm">
                       {stats.active} active
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </Card>
+      </section>
+
+      {/* Vouchers by country */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold">Voucher activity by country</h2>
+        <Card className="overflow-x-auto p-4">
+          <table className="block w-full text-left text-sm sm:table">
+            <caption className="sr-only">
+              Vouchers funded, settled and value grouped by clinic country
+            </caption>
+            <thead className="hidden sm:table-header-group">
+              <tr className="border-b border-[var(--color-line)] text-xs text-[var(--color-ink-soft)]">
+                <th scope="col" className="pb-2 font-medium">Country code</th>
+                <th scope="col" className="pb-2 font-medium text-right">Vouchers funded</th>
+                <th scope="col" className="pb-2 font-medium text-right">Care settled</th>
+                <th scope="col" className="pb-2 font-medium text-right">Value settled</th>
+              </tr>
+            </thead>
+            <tbody className="block divide-y divide-[var(--color-line)] sm:table-row-group">
+              {countryVouchers.length === 0 ? (
+                <tr className="block sm:table-row">
+                  <td
+                    colSpan={4}
+                    className="block py-4 text-center text-xs text-[var(--color-ink-soft)] sm:table-cell"
+                  >
+                    No voucher activity recorded yet.
+                  </td>
+                </tr>
+              ) : (
+                countryVouchers.map(([country, activity]) => (
+                  <tr
+                    key={country}
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 sm:table-row sm:py-0"
+                  >
+                    <td className="block font-medium sm:table-cell sm:py-2.5">
+                      {country}
+                    </td>
+                    <td className="block text-xs text-[var(--color-ink-soft)] sm:table-cell sm:py-2.5 sm:text-sm sm:text-[var(--color-ink)] text-right">
+                      {activity.funded} funded
+                    </td>
+                    <td className="block text-xs text-emerald-700 sm:table-cell sm:py-2.5 sm:text-sm text-right">
+                      {activity.settled} settled
+                    </td>
+                    <td className="block text-xs text-[var(--color-ink)] sm:table-cell sm:py-2.5 sm:text-sm text-right font-mono">
+                      ${formatUsdc(activity.settledValue.toString())}
                     </td>
                   </tr>
                 ))

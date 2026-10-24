@@ -4,6 +4,7 @@ import {
   beneficiaryRef,
   generateKey,
   isValidRef,
+  matchesBeneficiaryRef,
   parsePatientBackup,
   serialisePatientBackup,
 } from './beneficiary';
@@ -43,6 +44,37 @@ describe('beneficiaryRef', () => {
   it('rejects an empty identifier and a short key', async () => {
     await expect(beneficiaryRef('   ', KEY)).rejects.toThrow(/patient reference/i);
     await expect(beneficiaryRef('patient-001', 'too-short')).rejects.toThrow(
+      /32 characters/i,
+    );
+  });
+});
+
+describe('matchesBeneficiaryRef', () => {
+  const REF = '13833777cd997fe9b416748083856e2deaf0f8fb979a40553214d4fe15318560';
+
+  it('matches the right identifier and key, ignoring case and whitespace', async () => {
+    await expect(matchesBeneficiaryRef(REF, 'patient-001', KEY)).resolves.toBe(true);
+    await expect(matchesBeneficiaryRef(` ${REF.toUpperCase()} `, 'PATIENT-001 ', KEY)).resolves.toBe(
+      true,
+    );
+  });
+
+  it('does not match a different identifier or key', async () => {
+    await expect(matchesBeneficiaryRef(REF, 'patient-002', KEY)).resolves.toBe(false);
+    await expect(
+      matchesBeneficiaryRef(REF, 'patient-001', 'a-different-secret-key-0123456789'),
+    ).resolves.toBe(false);
+  });
+
+  it('treats a malformed voucher reference as no match without leaking input', async () => {
+    await expect(matchesBeneficiaryRef('not-a-reference', 'patient-001', KEY)).resolves.toBe(
+      false,
+    );
+  });
+
+  it('rejects input the panel must explain instead', async () => {
+    await expect(matchesBeneficiaryRef(REF, '   ', KEY)).rejects.toThrow(/patient reference/i);
+    await expect(matchesBeneficiaryRef(REF, 'patient-001', 'short')).rejects.toThrow(
       /32 characters/i,
     );
   });

@@ -46,6 +46,25 @@ export function isValidRef(ref: string): boolean {
   return /^[0-9a-f]{64}$/.test(ref);
 }
 
+/**
+ * Whether a patient reference and key derive the voucher's beneficiary
+ * reference.
+ *
+ * Used by the clinic's verify panel (#33). Everything stays in this
+ * browser: the identifier and key are hashed locally with `beneficiaryRef`
+ * and only this boolean is handed back. A malformed reference simply does
+ * not match; invalid input (empty identifier, short key) rejects so the
+ * panel can explain what to fix.
+ */
+export async function matchesBeneficiaryRef(
+  expectedRef: string,
+  identifier: string,
+  key: string,
+): Promise<boolean> {
+  const derived = await beneficiaryRef(identifier, key);
+  return derived === expectedRef.trim().toLowerCase();
+}
+
 export type SavedPatient = { nickname: string; identifier: string; key: string };
 
 /**

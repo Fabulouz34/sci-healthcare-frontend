@@ -36,7 +36,7 @@ jobs:
   auto-merge:
     # Every run sweeps all open pull requests, so CI finishing anywhere
     # (including on main) is a reason to look again.
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v5
         with:
@@ -44,7 +44,7 @@ jobs:
           sparse-checkout: .github/scripts
           persist-credentials: false
 
-      - uses: actions/github-script@v8
+      - uses: actions/github-script@v9
         env:
           # Pull requests that change these paths also need a maintainer
           # approval. CI runs with the workflow files from the pull request

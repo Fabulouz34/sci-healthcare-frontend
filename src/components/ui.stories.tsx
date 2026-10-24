@@ -75,10 +75,10 @@ export const TooltipBasic: StoryObj = {
   render: () => (
     <p className="text-sm text-[var(--color-ink-soft)]">
       Dispute window closes in 3d — settles after that.
-      <Tooltip content="Anyone can dispute before the window closes. After it closes, anyone can release the payment.">
+      <Tooltip content="The funder can dispute before the window closes. After it closes, anyone can release the payment.">
         <span
           tabIndex={0}
-          className="ml-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px]"
+          className="ms-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px]"
         >
           ?
         </span>

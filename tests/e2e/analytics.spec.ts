@@ -1,6 +1,14 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { CLAIMED_VOUCHER, CLINIC, FUNDED_VOUCHER, FUNDER, PROVIDER } from './fixtures';
+import {
+  CLAIMED_VOUCHER,
+  CLINIC,
+  FUNDED_VOUCHER,
+  FUNDER,
+  PATIENT_IDENTIFIER,
+  PATIENT_KEY,
+  PROVIDER,
+} from './fixtures';
 import { mockBackend, useMockWallet } from './helpers';
 
 /**
@@ -113,6 +121,12 @@ test('claiming records a prop-less event', async ({ page }) => {
   });
 
   await page.goto('/clinic');
+  // Claiming needs a matching patient check at the desk (#33).
+  await page.getByRole('button', { name: 'Verify patient' }).click();
+  await page.getByLabel('Patient reference').fill(PATIENT_IDENTIFIER);
+  await page.getByLabel('Patient secret key').fill(PATIENT_KEY);
+  await page.getByRole('button', { name: 'Check patient' }).click();
+  await expect(page.getByText('Match.')).toBeVisible();
   await page.getByRole('button', { name: 'Mark patient seen' }).click();
   await expect(page.getByText('Done.')).toBeVisible();
 

@@ -1,3 +1,4 @@
+import { isAnalyticsOptedOut } from './analytics-preference';
 import { config } from './config';
 
 /**
@@ -13,7 +14,9 @@ import { config } from './config';
  *    reference, a beneficiary hash or an amount even by accident.
  *
  * Everything is behind NEXT_PUBLIC_PLAUSIBLE_DOMAIN: unset means no script
- * tag, no queueing and no network calls.
+ * tag, no queueing and no network calls. A visitor can also turn analytics
+ * off in the footer (or with the browser's Do Not Track setting), in which
+ * case `isAnalyticsEnabled` is false and nothing is sent (#143).
  */
 
 export const ANALYTICS_EVENTS = [
@@ -40,7 +43,13 @@ export function normalizePath(pathname: string): string {
   return pathname;
 }
 
+/** Analytics is configured and this visitor has not opted out. */
 export function isAnalyticsEnabled(): boolean {
+  return config.plausibleDomain.length > 0 && !isAnalyticsOptedOut();
+}
+
+/** Analytics is configured at build time (the toggle is offered). */
+export function isAnalyticsConfigured(): boolean {
   return config.plausibleDomain.length > 0;
 }
 
@@ -70,6 +79,12 @@ export function flushAnalyticsQueue(): void {
   const w = window as unknown as AnalyticsWindow;
   const queued = w.__sciAnalyticsQueue ?? [];
   w.__sciAnalyticsQueue = [];
+  // Opting out after events were queued must drop them rather than send
+  // them when the script finishes loading.
+  if (!isAnalyticsEnabled()) {
+    w.__sciAnalyticsQueue = [];
+    return;
+  }
   if (typeof w.plausible !== 'function') {
     w.__sciAnalyticsQueue = queued;
     return;
