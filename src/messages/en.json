@@ -48,6 +48,7 @@
     "viewContract": "View the voucher contract",
     "copyLink": "Copy link",
     "linkCopied": "Link copied!",
+    "addToCalendar": "Add to calendar",
     "presentAtDesk": "Present at Clinic Desk",
     "presentNote": "Show this QR code upon arrival at the clinic. The desk can scan it instantly to look up and claim your voucher.",
     "scanToView": "Scan to view #{id}",

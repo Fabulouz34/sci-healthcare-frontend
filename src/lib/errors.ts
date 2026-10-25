@@ -190,3 +190,49 @@ export function humaniseError(
   }
   return message;
 }
+
+/**
+ * Horizon result codes for a rejected *classic* transaction (the USDC
+ * changeTrust of #1 goes to Horizon, not through a contract, so these codes
+ * are the only explanation the user would otherwise get).
+ */
+const HORIZON_TX_ERRORS: Record<string, string> = {
+  tx_bad_seq:
+    'Your wallet signed an outdated version of this request. Press Add USDC again.',
+  tx_insufficient_fee: 'The network fee was too low. Press Add USDC again.',
+  tx_failed: 'The network rejected this request. Press Add USDC again.',
+  op_underfunded:
+    'Not enough XLM: holding USDC locks 0.5 XLM as a reserve. Top up your ' +
+    'wallet, then press Add USDC again.',
+  op_line_full:
+    'Your wallet already holds all the USDC this issuer allows.',
+  op_no_issuer: 'USDC does not exist on this network.',
+  op_no_trust:
+    'Your wallet is not ready to hold USDC yet. Press Add USDC and approve ' +
+    'it in your wallet.',
+  op_malformed: 'The request was built incorrectly. Press Add USDC again.',
+};
+
+/**
+ * Plain language for Horizon's `extras.result_codes` (`tx` plus one code
+ * per operation). Unknown codes are shown verbatim rather than swallowed:
+ * a recognisable code is still a starting point for a bug report.
+ */
+export function humaniseHorizonResult(
+  status: number,
+  codes?: { tx?: string; operations?: string[] } | null,
+): string {
+  const all = [...(codes?.operations ?? []), ...(codes?.tx ? [codes.tx] : [])];
+  for (const code of all) {
+    const message = HORIZON_TX_ERRORS[code];
+    if (message) return message;
+  }
+  if (all.length > 0) {
+    return `The network rejected this request (${all.join(', ')}). Try again.`;
+  }
+  if (status === 504) {
+    return 'The network is taking longer than usual. The request may still ' +
+      'go through — check your wallet balance before trying again.';
+  }
+  return `The Stellar network could not accept this request (HTTP ${status}). Try again.`;
+}

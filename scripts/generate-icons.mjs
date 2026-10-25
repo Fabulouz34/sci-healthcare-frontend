@@ -6,7 +6,7 @@
  * generated rather than hand-drawn so they stay reproducible: a rounded
  * brand-coloured square with the same white cross the header uses.
  *
- * No image library: a PNG is four chunks and a zlib stream, and Node has
+ * No image library: a PNG is a handful of chunks and a zlib stream, and Node has
  * zlib built in. Nothing here runs at build time — this is a one-off tool.
  */
 
@@ -50,28 +50,24 @@ function encodePng(size, pixel) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // colour type: RGBA
-  // 10..12: deflate compression, adaptive filtering, no interlace — all 0.
-
-  // Each scanline is prefixed with its filter type (0: none).
-  const raw = Buffer.alloc(size * (size * 4 + 1));
+  ihdr[8] = 2; // Four palette slots per byte; three colours are used.
+  ihdr[9] = 3; // Indexed colour, lossless (transparent, brand, white).
+  const rowBytes = Math.ceil(size / 4);
+  const raw = Buffer.alloc(size * (rowBytes + 1));
   for (let y = 0; y < size; y += 1) {
-    const rowStart = y * (size * 4 + 1);
-    raw[rowStart] = 0;
+    const rowStart = y * (rowBytes + 1);
     for (let x = 0; x < size; x += 1) {
-      const [r, g, b, a] = pixel(x, y);
-      const at = rowStart + 1 + x * 4;
-      raw[at] = r;
-      raw[at + 1] = g;
-      raw[at + 2] = b;
-      raw[at + 3] = a;
+      const [r, , , a] = pixel(x, y);
+      const index = a === 0 ? 0 : r === WHITE[0] ? 2 : 1;
+      raw[rowStart + 1 + Math.floor(x / 4)] |= index << (6 - (x % 4) * 2);
     }
   }
 
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk('IHDR', ihdr),
+    chunk('PLTE', Buffer.from([0, 0, 0, ...BRAND, ...WHITE])),
+    chunk('tRNS', Buffer.from([0, 255, 255])),
     chunk('IDAT', deflateSync(raw, { level: 9 })),
     chunk('IEND', Buffer.alloc(0)),
   ]);
@@ -106,6 +102,8 @@ function draw(size, { rounded = true, glyphScale = 0.56, radius = 0.22 } = {}) {
 }
 
 const ICONS = [
+  // Small raster favicon fallback for browsers without SVG icons.
+  { file: 'favicon-32.png', size: 32, options: {} },
   // `any`: rounded tile, generous glyph.
   { file: 'icon-192.png', size: 192, options: {} },
   { file: 'icon-512.png', size: 512, options: {} },

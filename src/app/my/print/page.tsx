@@ -8,6 +8,7 @@ import { beneficiaryRef } from '@/lib/beneficiary';
 import { useProviders, useReceipts } from '@/lib/hooks';
 import { useSavedIdentity } from '@/lib/useSavedIdentity';
 import { Button, Card, Empty } from '@/components/ui';
+import { SkeletonRow } from '@/components/Skeleton';
 
 /**
  * Print-friendly summary of care delivered to a patient (#46).
@@ -105,7 +106,11 @@ export default function PrintableCareSummaryPage() {
       </div>
 
       {loading && (
-        <p className="text-sm text-[var(--color-ink-soft)] print:hidden">Loading care history…</p>
+        <Card className="space-y-4 p-5 print:hidden">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
       )}
 
       {!loading && receipts.length === 0 && (

@@ -12,8 +12,8 @@
     "docs": "Documentation"
   },
   "footer": {
-    "testnetDisclaimer": "Déploiement Testnet. Aucun fonds réel, et aucune information médicale sur le patient n'est stockée sur la chaîne — les bons font référence uniquement à une catégorie de service et à une référence de bénéficiaire opaque.",
-    "mainnetDisclaimer": "Aucune information médicale sur le patient n'est stockée sur la chaîne — les bons font référence uniquement à une catégorie de service et à une référence de bénéficiaire opaque."
+    "testnetDisclaimer": "Déploiement Testnet. Aucun fonds réel, et aucune information médicale sur le patient n'est stockée sur la chaîne — les bons font référence uniquement à une catégorie de service et à une référence de benéficiaire opaque.",
+    "mainnetDisclaimer": "Aucune information médicale sur le patient n'est stockée sur la chaîne — les bons font référence uniquement à une catégorie de service et à une référence de benéficiaire opaque."
   },
   "common": {
     "loading": "Chargement…",
@@ -30,7 +30,10 @@
   },
   "home": {
     "verifiedClinics": "Cliniques vérifiées",
-    "noClinics": "Aucune clinique enregistrée pour le moment."
+    "noClinics": "Aucune clinique enregistrée pour le moment.",
+    "noClinicsHint": "Les cliniques apparaîtront ici dès qu'elles s'enregistreront et seront vérifiées. Si vous gérez une clinique, commencez par l'enregistrer.",
+    "noClinicsAction": "Enregistrer une clinique",
+    "noClinicsActionLink": "/clinic"
   },
   "voucher": {
     "voucherNumber": "Bon #{id}",
@@ -48,6 +51,7 @@
     "viewContract": "Voir le contrat de bon",
     "copyLink": "Copier le lien",
     "linkCopied": "Lien copié !",
+    "addToCalendar": "Ajouter au calendrier",
     "presentAtDesk": "À présenter à l'accueil de la clinique",
     "presentNote": "Présentez ce code QR à votre arrivée à la clinique. L'accueil peut le scanner instantanément pour trouver et réclamer votre bon.",
     "scanToView": "Scanner pour voir #{id}",
@@ -75,11 +79,13 @@
     "register": "S'inscrire",
     "services": "Services",
     "noServices": "Aucun service répertorié pour le moment. Les bailleurs ne peuvent financer que les services répertoriés.",
+    "noServicesHint": "Ajoutez un service avec un code et un prix pour que les bailleurs puissent le financer. Utilisez une catégorie générique, jamais un diagnostic.",
+    "noServicesAction": "Lister un service",
     "code": "Code {code}",
     "edit": "Modifier",
     "delist": "Déréférencer",
     "confirmDelist": "Confirmer le déréférencement",
-    "delistNote": "Le déréférencement empêche les nouveaux bons pour ce service. Les bons déjà financés conservent leur montant convenu et se règlent normalement.",
+    "delistNote": "Le déréférencement empêche les nouveaux bons pour ce service. Les bons déjà finanés conservent leur montant convenu et se règlent normalement.",
     "updateService": "Mettre à jour le service {code}",
     "listService": "Lister un service",
     "codePlaceholder": "Code (101)",
@@ -88,6 +94,8 @@
     "serviceNote": "Utilisez une catégorie de service générale, jamais un diagnostic. Les codes sont publics. Un nouveau prix s'applique aux bons financés à partir de maintenant.",
     "incomingVouchers": "Bons entrants",
     "noIncoming": "Aucun bon pour cette clinique pour le moment.",
+    "noIncomingHint": "Les bons apparaîtront ici dès que des bailleurs financent un service. Partagez votre lien de clinique avec les patients pour qu'ils présentent leur bon à l'accueil.",
+    "noIncomingAction": "Lister un service",
     "earnings": "Revenus",
     "earningsNote": "Trésorerie de cette clinique : soins réglés, paiements en attente et frais de protocole payés.",
     "earningsSettled": "Réglé",
@@ -101,6 +109,8 @@
     "earningsMonth": "Mois",
     "earningsTotal": "Total",
     "earningsEmpty": "Aucun revenu réglé ou en attente pour le moment.",
+    "earningsEmptyHint": "Les revenus apparaîtront ici dès que des bons sont remboursés. Listez un service pour commencer à recevoir des bons.",
+    "earningsEmptyAction": "Lister un service",
     "earningsUnavailable": "Les revenus sont temporairement indisponibles. Le reste du bureau fonctionne toujours.",
     "filterByStatus": "Filtrer par statut",
     "allStatuses": "Tous",
@@ -142,8 +152,8 @@
   "scanner": {
     "title": "Scanner le QR du bon patient",
     "instructions": "Pointez la caméra vers le code QR du bon du patient pour l'ouvrir automatiquement.",
-    "requestingCamera": "Demande de caméra…",
-    "cameraUnavailable": "Caméra indisponible",
+    "requestingCamera": "Demande de caméra",
+    "cameraUnavailable": "Camera indisponible",
     "manualPrompt": "Ou entrez le numéro de bon manuellement",
     "manualPlaceholder": "ex. 42 ou collez l'URL",
     "open": "Ouvrir"
