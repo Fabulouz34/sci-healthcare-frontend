@@ -8,6 +8,7 @@ import { ApiError, type ServiceCatalogueItem } from '@/lib/api';
 import { formatUsdc } from '@/lib/amounts';
 import { useProviders, useService } from '@/lib/hooks';
 import { Alert, Button, Card, Empty } from '@/components/ui';
+import { SkeletonCard, SkeletonDetail } from '@/components/Skeleton';
 
 export default function ServicePage({
   params,
@@ -37,7 +38,7 @@ export default function ServicePage({
   if (loadRawError instanceof ApiError && loadRawError.status === 404) notFound();
   if (loadError) return <Alert>{loadError}</Alert>;
   if (!service) {
-    return <p className="text-sm text-[var(--color-ink-soft)]">Loading service…</p>;
+    return <SkeletonDetail />;
   }
 
   return (
@@ -82,7 +83,10 @@ export default function ServicePage({
 
         {loadError && <Alert>{loadError}</Alert>}
         {!service && !loadError && (
-          <p className="text-sm text-[var(--color-ink-soft)]">Loading clinics…</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         )}
 
         {!service && !loadError && clinics.length === 0 && (
@@ -128,7 +132,7 @@ export default function ServicePage({
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/clinics/${c.address}`}
-                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-line)] bg-white px-3 py-1.5 text-xs font-medium text-[var(--color-brand)] transition hover:bg-[var(--color-canvas)]"
+                        className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-line)] bg-white px-3.5 py-1.5 text-xs font-medium text-[var(--color-brand)] transition hover:bg-[var(--color-canvas)]"
                       >
                         Fund care →
                       </Link>

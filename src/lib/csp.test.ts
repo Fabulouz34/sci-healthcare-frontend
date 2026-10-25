@@ -112,6 +112,33 @@ describe('contentSecurityPolicy', () => {
     );
   });
 
+  it('allows the configured SEP-24 anchors and nothing else (#196)', () => {
+    const anchor = {
+      name: 'Test Anchor',
+      domain: 'anchor.example.test',
+      countries: ['NG'],
+      assetCode: 'USDC',
+      assetIssuer: `G${'A'.repeat(55)}`,
+    };
+
+    const configured = directives(
+      contentSecurityPolicy({
+        ...BASE_ENV,
+        NEXT_PUBLIC_SEP24_ANCHORS: JSON.stringify([anchor]),
+      }),
+    ).get('connect-src');
+    expect(configured).toContain('https://anchor.example.test');
+    expect(configured).toContain('https://*.anchor.example.test');
+
+    // Malformed anchor config must not widen the policy.
+    const broken = directives(
+      contentSecurityPolicy({ ...BASE_ENV, NEXT_PUBLIC_SEP24_ANCHORS: '{' }),
+    ).get('connect-src');
+    expect(broken).toBe(
+      directives(contentSecurityPolicy(BASE_ENV)).get('connect-src'),
+    );
+  });
+
   it('adds the development-only allowances only in development', () => {
     expect(directives(contentSecurityPolicy(BASE_ENV, true)).get('script-src'))
       .toContain("'unsafe-eval'");

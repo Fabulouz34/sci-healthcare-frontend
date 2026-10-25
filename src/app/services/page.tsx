@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useServices } from '@/lib/hooks';
 import { formatUsdc } from '@/lib/amounts';
 import { Alert, Button, Card, Empty } from '@/components/ui';
+import { SkeletonCard } from '@/components/Skeleton';
 
 export default function ServicesPage() {
   const [query, setQuery] = useState('');
@@ -82,7 +83,7 @@ export default function ServicesPage() {
         <div className="flex flex-wrap items-center gap-2.5 pt-0.5">
           <Link
             href="/"
-            className="inline-flex max-sm:min-h-11 items-center justify-center gap-2 rounded-lg border border-[var(--color-line)] bg-white px-3.5 py-1.5 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-canvas)]"
+            className="inline-flex max-sm:min-h-15 items-center justify-center gap-2 rounded-lg border border-[var(--color-line)] bg-white px-3.5 py-1.5 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-canvas)]"
           >
             Browse clinics →
           </Link>
@@ -121,23 +122,38 @@ export default function ServicesPage() {
 
         {error && <Alert>{error}</Alert>}
         {loading && !error && (
-          <p className="text-sm text-[var(--color-ink-soft)]">Loading services…</p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
         )}
 
         {!loading && !error && services.length === 0 && (
-          <Empty>
-            No services listed yet. Ask a registered clinic to publish its
-            services from the clinic desk.
-          </Empty>
+          <Empty
+            title="No services listed yet"
+            description="Clinics publish the care they offer from the clinic desk. Once one does, it will appear here for funders to compare."
+            action={
+              <Link
+                href="/clinic"
+                className="inline-flex max-sm:min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--color-brand)] px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                List a service
+              </Link>
+            }
+          />
         )}
 
         {!loading && !error && services.length > 0 && visible.length === 0 && (
-          <Empty>
-            <p>No services match your search.</p>
-            <Button variant="ghost" className="mt-3" onClick={clearFilters}>
-              Clear search
-            </Button>
-          </Empty>
+          <Empty
+            title="No services match your search."
+            description="Try a broader term, or clear the search to see the full catalogue."
+            action={
+              <Button variant="ghost" onClick={clearFilters}>
+                Clear search
+              </Button>
+            }
+          />
         )}
 
         {!loading && !error && visible.length > 0 && (

@@ -26,6 +26,7 @@
  * therefore outside this policy.
  */
 
+import { parseSep24Anchors } from './sep24-config';
 import { TRUSTED_TYPES_POLICY } from './trusted-types';
 
 export type CspEnv = Record<string, string | undefined>;
@@ -110,6 +111,19 @@ export function contentSecurityPolicy(
   const walletConnectEnabled = Boolean(
     env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID?.trim(),
   );
+  // SEP-24 anchors (#196): the interactive flow talks to the anchor's own
+  // TRANSFER_SERVER_SEP0024, and stellar.toml discovery is read from the bare
+  // domain, so both the anchor and its subdomains have to be reachable.
+  // Malformed config is reported by the build validator in next.config.ts;
+  // here it simply grants nothing, so a broken value cannot widen the policy.
+  let anchorOrigins: string[] = [];
+  try {
+    anchorOrigins = parseSep24Anchors(env.NEXT_PUBLIC_SEP24_ANCHORS).flatMap(
+      ({ domain }) => [`https://${domain}`, `https://*.${domain}`],
+    );
+  } catch {
+    anchorOrigins = [];
+  }
 
   const directives: Record<string, (string | false | null | undefined)[]> = {
     'default-src': ["'self'"],
@@ -170,6 +184,7 @@ export function contentSecurityPolicy(
       walletConnectEnabled && WALLET_CONNECT.pulse,
       walletConnectEnabled && WALLET_CONNECT.web3modal,
       walletConnectEnabled && WALLET_CONNECT.reownApi,
+      ...anchorOrigins,
       isDev && 'ws:',
     ],
     // Wallet signing happens in a popup (window.open), never an iframe, so

@@ -8,10 +8,12 @@ import {
   type DailyStats,
   type Provider,
   type ProviderStats,
+  type ReadyStatus,
   type ReceiptsResponse,
   type ServiceCatalogueItem,
   type ServicesResponse,
   type Stats,
+  type VersionInfo,
   type Voucher,
   type VoucherDetail,
   type VoucherEvent,
@@ -178,14 +180,18 @@ export function useProviderVouchers(
 
 /**
  * Hook for fetching and caching provider directory (#63).
+ *
+ * `null` skips the request, like `useVouchers`: a caller that only needs the
+ * directory once something is open (the command palette) must not make every
+ * page in the app fetch it.
  */
 export function useProviders(
-  params?: { status?: 'Pending' | 'Active' | 'Suspended'; country?: string; q?: string },
+  params?: { status?: 'Pending' | 'Active' | 'Suspended'; country?: string; q?: string } | null,
   config?: SWRConfiguration<{ total: number; providers: Provider[] }>,
 ) {
   const { data, error, isLoading, isValidating, mutate } = useSWR(
-    ['providers', params ?? {}],
-    () => api.providers(params),
+    params === null ? null : ['providers', params ?? {}],
+    () => api.providers(params ?? undefined),
     config,
   );
 
@@ -212,6 +218,47 @@ export function useStats(config?: SWRConfiguration<Stats>) {
 
   return {
     stats: data ?? null,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for the indexer's readiness check (#168). A degraded answer is data,
+ * not an error; `error` is set only when the API cannot be reached at all.
+ */
+export function useReady(config?: SWRConfiguration<ReadyStatus>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ReadyStatus>(
+    'ready',
+    () => api.ready(),
+    config,
+  );
+
+  return {
+    ready: data ?? null,
+    error: error instanceof Error ? error.message : error ? String(error) : null,
+    rawError: error,
+    isLoading,
+    isValidating,
+    mutate,
+  };
+}
+
+/**
+ * Hook for the indexer's build and deployment info (#168).
+ */
+export function useVersion(config?: SWRConfiguration<VersionInfo>) {
+  const { data, error, isLoading, isValidating, mutate } = useSWR<VersionInfo>(
+    'version',
+    () => api.version(),
+    config,
+  );
+
+  return {
+    version: data ?? null,
     error: error instanceof Error ? error.message : error ? String(error) : null,
     rawError: error,
     isLoading,

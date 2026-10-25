@@ -76,6 +76,13 @@ export type BackendState = {
   attesters?: Record<string, unknown>[];
   receipts?: { total: number; totalSpendDisplay: string; receipts: Record<string, unknown>[] };
   /**
+   * `GET /ready` (#168). Defaults to a healthy, caught-up indexer; a
+   * degraded body is served with 503, like a real readiness probe.
+   */
+  ready?: Record<string, unknown>;
+  /** `GET /version` (#168). */
+  version?: Record<string, unknown>;
+  /**
    * `GET /services` service catalogue. Each item is a `ServiceCatalogueItem`
    * with `code`, `labels`, `clinicCount`, `minPrice`/`maxPrice` and an
    * optional `providers` array used by the service comparison page.
@@ -100,6 +107,30 @@ export async function mockBackend(page: Page, state: BackendState): Promise<void
         contentType: 'application/json',
         body: JSON.stringify(body),
       });
+
+    if (parts[0] === 'ready') {
+      const ready = state.ready ?? {
+        status: 'ready',
+        checks: { database: true, network: 'testnet', indexedLedger: 512340, lagLedgers: 0, gapDetected: false },
+      };
+      return json(ready, ready.status === 'ready' ? 200 : 503);
+    }
+
+    if (parts[0] === 'version') {
+      return json(
+        state.version ?? {
+          version: '0.2.0',
+          commit: 'abc1234def5678',
+          network: 'testnet',
+          rpcUrl: 'https://soroban-testnet.stellar.org',
+          rpcUrls: ['https://soroban-testnet.stellar.org'],
+          contracts: { registry: '', voucher: '', receipt: '', usdc: null, faucet: null },
+          indexerStartLedger: 500000,
+          startedAt: '2026-06-01T00:00:00.000Z',
+          uptimeSeconds: 3600,
+        },
+      );
+    }
 
     if (parts[0] === 'stats') {
       if (parts[1] === 'daily') {
@@ -249,9 +280,14 @@ export async function mockBackend(page: Page, state: BackendState): Promise<void
   });
 }
 
+/** Every call recorded by the RPC mock, in call order. */
+export async function mockCalls(page: Page): Promise<MockRpcCall[]> {
+  return page.evaluate(() => window.__SCI_MOCK_RPC__?.calls ?? []);
+}
+
 /** Contract writes recorded by the RPC mock, in call order. */
 export async function mockInvokes(page: Page): Promise<MockRpcCall[]> {
-  const calls = await page.evaluate(() => window.__SCI_MOCK_RPC__?.calls ?? []);
+  const calls = await mockCalls(page);
   return calls.filter((c) => c.kind === 'invoke');
 }
 

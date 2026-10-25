@@ -58,7 +58,7 @@ Contract ids are already in `vercel.json`. Vercel will prompt for one variable,
 
 ## Two properties worth stating up front
 
-**Non-custodial.** The app never holds, requests, or transmits a secret key. Transactions are built and simulated in the browser, signed in the user's wallet, and submitted straight to Soroban RPC. The backend is not in the write path.
+**Non-custodial.** The app never holds, requests, or transmits a wallet secret key. Transactions are built and simulated in the browser, signed in the user's wallet, and submitted straight to Soroban RPC. Optional testnet fee sponsorship sends the signed transaction to a sponsor for a fee-bump signature before browser submission; see [sponsored fees](docs/sponsored-fees.md).
 
 **Nothing identifying leaves the browser.** The patient reference and its secret key are used locally, via Web Crypto HMAC-SHA256, to derive an opaque 32-byte value. The identifier and key are never sent to the API, never logged, and never written to the ledger.
 
@@ -97,6 +97,7 @@ Every one of these is inlined into the client bundle at **build** time.
 | Variable | Example |
 | --- | --- |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:8080` |
+| `NEXT_PUBLIC_SPONSORED_FEES` | `(optional) true enables opt-in testnet fee sponsorship; unset disables it. Requires the separate sponsor backend described in docs/sponsored-fees.md.` |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | `testnet` |
 | `NEXT_PUBLIC_SOROBAN_RPC_URL` | `https://soroban-testnet.stellar.org` |
 | `NEXT_PUBLIC_NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` |
@@ -106,6 +107,7 @@ Every one of these is inlined into the client bundle at **build** time.
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | `CCRLJ7FEIKTR3GBT3VQQPSIJGRBO2WPNMVFKJDP6AYGJQWECOR4QVE5M` |
 | `NEXT_PUBLIC_FAUCET_CONTRACT_ID` | `CCB25WG7DQ2CSNXPTOHZO2PDZ324FQPZLH3LSNCCLWYM3FEH52GEXC47` (testnet only; leave unset in production) |
 | `NEXT_PUBLIC_USDC_ISSUER` | `GCKX5KAFVF7GLFZ3JWQGJ4F62RYYZU67PI3TACBGKVPJ73JELMI3L4KR` |
+| `NEXT_PUBLIC_SEP24_ANCHORS` | Optional JSON allowlist of anchor names, domains, supported ISO country codes, asset codes and exact asset issuers; see [SEP-24 cash-out](docs/sep24.md) |
 | `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | `(optional) analytics domain, e.g. `app.example.com`; unset disables analytics entirely` |
 | `NEXT_PUBLIC_SENTRY_DSN` | `(optional) Sentry DSN for error reporting; unset disables it entirely` |
 | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | `(optional) Reown project id for mobile wallets; unset offers extension and passkey wallets only` |
@@ -183,6 +185,7 @@ Suited to a platform built for Next.js, such as Vercel.
 - Build: `npm run build`
 - Add every `NEXT_PUBLIC_*` variable above to the project's environment **before** the first build
 - Point `NEXT_PUBLIC_API_URL` at the deployed indexer, and add that origin to the backend's `CORS_ORIGIN`
+- Configure `NEXT_PUBLIC_SEP24_ANCHORS` only after confirming the anchor supports browser CORS and the exact deployed settlement asset; its HTTPS origins are added to `connect-src` at build time
 
 ## Related repositories
 

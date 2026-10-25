@@ -2,22 +2,11 @@
 
 import { usePathname } from 'next/navigation';
 import Script from 'next/script';
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useRef } from 'react';
 
-import { flushAnalyticsQueue, trackPageview } from '@/lib/analytics';
-import { useAnalyticsOptOut } from '@/lib/analytics-preference';
+import { flushAnalyticsQueue, trackMetric, trackPageview } from '@/lib/analytics';
+import { reportCoreWebVitals, useAnalyticsOptOut } from '@/lib/analytics-preference';
 import { useLowBandwidth } from '@/lib/low-bandwidth';
-
-/**
- * False during SSR and the hydrating render, true afterwards. Used to keep
- * the script tag out of the server HTML: a browser-local opt-out cannot be
- * known on the server, and a script that shipped there would start loading
- * before hydration could stop it.
- */
-const subscribeNever = () => () => {};
-function useHasMounted(): boolean {
-  return useSyncExternalStore(subscribeNever, () => true, () => false);
-}
 
 /**
  * Cookieless usage analytics (Plausible).
@@ -27,6 +16,9 @@ function useHasMounted(): boolean {
  * tracker below with a normalized path, so provider addresses and voucher
  * ids never leave the browser. Funnel events are sent separately with names
  * only (see src/lib/analytics.ts).
+ *
+ * Core Web Vitals (LCP, INP, CLS) are reported through the same queue once
+ * per page view, so field data shows how the app performs on real phones.
  *
  * In low-bandwidth mode (#75) usage analytics is the first thing to go:
  * the script is not loaded and no pageview is sent. Nothing the app does
@@ -41,12 +33,22 @@ export function Analytics({ domain }: { domain: string }) {
   const pathname = usePathname();
   const lowBandwidth = useLowBandwidth();
   const optedOut = useAnalyticsOptOut();
-  const mounted = useHasMounted();
-  const enabled = mounted && !lowBandwidth && !optedOut;
+  const enabled = !lowBandwidth && !optedOut;
+  const vitalsReported = useRef(false);
 
   useEffect(() => {
     if (pathname && enabled) trackPageview(pathname);
   }, [pathname, enabled]);
+
+  useEffect(() => {
+    if (!enabled) {
+      vitalsReported.current = false;
+      return;
+    }
+    if (vitalsReported.current) return;
+    vitalsReported.current = true;
+    return reportCoreWebVitals(({ name, value }) => trackMetric(name, Math.round(value)));
+  }, [enabled]);
 
   if (!enabled) return null;
 

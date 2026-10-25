@@ -10,6 +10,7 @@ import {
   recordMockCall,
 } from './e2e-seam';
 import { beginPendingTransaction } from './pending-tx';
+import { humaniseHorizonResult } from './errors';
 
 /**
  * Stellar SDK access.
@@ -196,12 +197,22 @@ export async function invokePathPaymentThenContract(
 
 interface HorizonBalanceLine {
   asset_type: string;
+  asset_code?: string;
+  asset_issuer?: string;
   balance: string;
 }
 
 interface HorizonAccountRecord {
   balances: HorizonBalanceLine[];
   subentry_count: number;
+}
+
+/** Body of Horizon's answer to `POST /transactions`. */
+interface HorizonSubmitResponse {
+  hash?: string;
+  extras?: {
+    result_codes?: { tx?: string; operations?: string[] };
+  };
 }
 
 function horizonBaseUrl(): string {
@@ -292,6 +303,198 @@ export async function getAccountSpendableBalance(
   }
 }
 
+// ----- USDC trustline (#1) -----
+//
+// Stellar assets are opt-in: an account can only hold USDC once it carries
+// a balance line (a "trustline") for that issuer. Without one, the first
+// USDC transfer a voucher makes fails deep inside the token with a raw host
+// error, so the funding form checks the line and offers to add it *before*
+// it offers to fund.
+
+export interface UsdcTrustlineInfo {
+  /** True when the account carries a balance line for the given issuer. */
+  hasTrustline: boolean;
+  /** Balance in base units when the line exists, otherwise null. */
+  balance: bigint | null;
+}
+
+/**
+ * Finds the USDC line in a Horizon account payload.
+ *
+ * Split from the fetch so the matching rules (code *and* issuer — either
+ * alone can match something else) are unit-testable without the network.
+ */
+export function usdcTrustlineFromAccount(
+  account: HorizonAccountRecord,
+  issuer: string,
+): UsdcTrustlineInfo {
+  const line = account.balances.find(
+    (b) =>
+      (b.asset_type === 'credit_alphanum4' ||
+        b.asset_type === 'credit_alphanum12') &&
+      b.asset_code === 'USDC' &&
+      b.asset_issuer === issuer,
+  );
+  if (!line) return { hasTrustline: false, balance: null };
+  try {
+    return { hasTrustline: true, balance: toBaseUnits(line.balance) };
+  } catch {
+    // A balance we cannot parse still means the line exists.
+    return { hasTrustline: true, balance: null };
+  }
+}
+
+/**
+ * Reads the connected wallet's USDC trustline from Horizon, or `null` when
+ * the answer is unknown: no issuer configured, the account is not funded
+ * yet, or Horizon did not answer.
+ *
+ * `null` fails open — the funding form keeps working exactly as it did
+ * before this check existed, because a transient read must never block a
+ * payment that would otherwise succeed.
+ */
+export async function getUsdcTrustline(
+  address: string,
+): Promise<UsdcTrustlineInfo | null> {
+  if (!config.usdcIssuer) return null;
+
+  if (isMockRpc()) {
+    // Playwright (src/lib/e2e-seam.ts): the mock account holds USDC unless
+    // a test sets `window.__SCI_NO_TRUSTLINE__` in an addInitScript.
+    const missing =
+      typeof window !== 'undefined' &&
+      (window as unknown as { __SCI_NO_TRUSTLINE__?: boolean })
+        .__SCI_NO_TRUSTLINE__;
+    if (missing) return { hasTrustline: false, balance: null };
+    return { hasTrustline: true, balance: 100_0000000n };
+  }
+
+  try {
+    const res = await fetch(`${horizonBaseUrl()}/accounts/${address}`, {
+      headers: { accept: 'application/json' },
+    });
+    // 404 = the account has no XLM yet, so there is no line to add either;
+    // the unfunded warning in the wallet menu already covers that case.
+    if (!res.ok) return null;
+    const account = (await res.json()) as HorizonAccountRecord;
+    return usdcTrustlineFromAccount(account, config.usdcIssuer);
+  } catch {
+    return null;
+  }
+}
+
+/** One trustline locks one subentry at the base reserve (0.5 XLM). */
+const TRUSTLINE_RESERVE_XLM = 0.5;
+/** Fee for a single-operation transaction. */
+const CHANGE_TRUST_FEE_XLM = 0.0001;
+
+/**
+ * Builds a `changeTrust` for USDC, has the wallet sign it, and submits it.
+ *
+ * This is a classic asset operation, so it goes to Horizon rather than
+ * Soroban RPC, and it has no simulation step the way a contract call does
+ * (`invokeContract`). The failure a simulation would have caught — not
+ * enough spendable XLM to lock the reserve — is therefore checked against
+ * the account *before* the wallet is asked to sign, and everything else is
+ * reported from Horizon's own result codes. The round trip counts as a
+ * pending write, so the unload guard covers it like every other write.
+ */
+export async function addUsdcTrustline(
+  address: string,
+  sign: SignFn,
+): Promise<{ hash: string }> {
+  const issuer = config.usdcIssuer;
+  if (!issuer) {
+    throw new Error('This deployment has no USDC issuer configured.');
+  }
+  const { Account, Asset, BASE_FEE, Operation, StrKey, TransactionBuilder } =
+    await loadSdk();
+  if (!StrKey.isValidEd25519PublicKey(issuer)) {
+    throw new Error('This deployment’s USDC issuer is not a valid Stellar address.');
+  }
+
+  const finish = beginPendingTransaction();
+  try {
+    const mocked = isMockRpc();
+
+    if (!mocked) {
+      const spendable = await getAccountSpendableBalance(address);
+      if (
+        spendable &&
+        spendable.spendable < TRUSTLINE_RESERVE_XLM + CHANGE_TRUST_FEE_XLM
+      ) {
+        throw new Error(
+          `Holding USDC locks ${TRUSTLINE_RESERVE_XLM} XLM as a reserve and ` +
+            `your spendable balance is ${spendable.spendable} XLM. Top up ` +
+            'your wallet, then press Add USDC again.',
+        );
+      }
+    }
+
+    const account = mocked
+      ? new Account(address, '0')
+      : await (await getServer()).getAccount(address);
+    const built = new TransactionBuilder(account, {
+      fee: BASE_FEE,
+      networkPassphrase: config.networkPassphrase,
+    })
+      .addOperation(Operation.changeTrust({ asset: new Asset('USDC', issuer) }))
+      .setTimeout(180)
+      .build();
+
+    const signedXdr = await sign(built.toXDR());
+    const signed = TransactionBuilder.fromXDR(
+      signedXdr,
+      config.networkPassphrase,
+    );
+
+    if (mocked) {
+      recordMockCall({
+        kind: 'change_trust',
+        contractId: config.contracts.usdc,
+        method: 'change_trust',
+      });
+      const delay = mockRpcDelayMs();
+      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
+      // The mock ledger applies the change at once, so the re-read after
+      // signing finds the line that was just added.
+      (window as unknown as { __SCI_NO_TRUSTLINE__?: boolean }).__SCI_NO_TRUSTLINE__ =
+        false;
+      return { hash: 'ab'.repeat(32) };
+    }
+
+    return await submitSigned(signed);
+  } finally {
+    finish();
+  }
+}
+
+/** Submits a signed classic transaction to Horizon and returns its hash. */
+async function submitSigned(
+  signed:
+    | import('@stellar/stellar-sdk').Transaction
+    | import('@stellar/stellar-sdk').FeeBumpTransaction,
+): Promise<{ hash: string }> {
+  let res: Response;
+  try {
+    res = await fetch(`${horizonBaseUrl()}/transactions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ tx: signed.toXDR() }),
+    });
+  } catch {
+    throw new Error(
+      'Could not reach the Stellar network, so nothing was sent. Check your ' +
+        'connection and try again.',
+    );
+  }
+  const body = (await res.json().catch(() => null)) as
+    | HorizonSubmitResponse
+    | null;
+  if (res.ok && body?.hash) return { hash: body.hash };
+  throw new Error(humaniseHorizonResult(res.status, body?.extras?.result_codes));
+}
+
 /** How long to wait for a submitted transaction to reach a final status. */
 const CONFIRM_TIMEOUT_MS = 45_000;
 const POLL_INTERVAL_MS = 1_500;
@@ -309,13 +512,14 @@ export async function invokeContract(
   args: xdr.ScVal[],
   walletAddress: string,
   sign: SignFn,
+  sponsored = false,
 ): Promise<{ hash: string; returnValue: unknown }> {
   // The whole round trip counts as pending: while it runs, the app warns
   // before the tab is closed or reloaded (see pending-tx.ts and
   // PendingTransactionGuard).
   const finish = beginPendingTransaction();
   try {
-    return await invoke(contractId, method, args, walletAddress, sign);
+    return await invoke(contractId, method, args, walletAddress, sign, sponsored);
   } finally {
     finish();
   }
@@ -382,28 +586,44 @@ async function invoke(
   args: xdr.ScVal[],
   walletAddress: string,
   sign: SignFn,
+  sponsored = false,
 ): Promise<{ hash: string; returnValue: unknown }> {
   const { TransactionBuilder, scValToNative } = await loadSdk();
+  let sponsor: typeof import('./sponsorship') | undefined;
+  if (sponsored) {
+    // Keep fee-bump validation off the ordinary wallet/read-page bundle.
+    sponsor = await import('./sponsorship');
+    if (contractId !== config.contracts.voucher || method !== 'create_voucher' || args.length !== 6) {
+      throw new Error('Only voucher funding can use sponsored fees.');
+    }
+    const amount: unknown = scValToNative(args[4]);
+    if (typeof amount !== 'bigint') throw new Error('Invalid sponsored voucher amount.');
+    sponsor.requireSponsorship(amount);
+  }
 
   // Playwright end-to-end tests (see e2e-seam.ts): record the invocation and
   // return a canned submission instead of building, simulating and sending
   // a real transaction. Crafting Soroban simulation payloads over HTTP
   // would couple the tests to SDK internals; this keeps the same
   // `{ hash, returnValue }` shape the UI consumes.
-  const prepared = await prepareContractInvocation(
+  const prepared = await prepareInvocation(
     contractId,
     method,
     args,
     walletAddress,
+    !sponsored,
   );
-  if (isMockRpc()) {
+  if (isMockRpc() && !sponsored) {
     const delay = mockRpcDelayMs();
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     return { hash: 'ab'.repeat(32), returnValue: mockReturnValue(method) };
   }
 
-  const signedXdr = await sign(prepared.xdr);
-  const signed = TransactionBuilder.fromXDR(signedXdr, config.networkPassphrase);
+  const unsigned = TransactionBuilder.fromXDR(prepared.xdr, config.networkPassphrase);
+  if (!('sequence' in unsigned)) throw new Error('Expected an unsigned inner transaction.');
+  const signed = sponsor
+    ? await sponsor.sponsorTransaction(unsigned, sign)
+    : TransactionBuilder.fromXDR(await sign(prepared.xdr), config.networkPassphrase);
 
   const server = await getServer();
   const sent = await server.sendTransaction(signed);
@@ -454,7 +674,18 @@ export async function prepareContractInvocation(
   args: xdr.ScVal[],
   source: string,
 ): Promise<PreparedInvocation> {
-  if (isMockRpc()) {
+  return prepareInvocation(contractId, method, args, source, true);
+}
+
+/** Sponsored calls must exercise real preparation even in the browser test seam. */
+async function prepareInvocation(
+  contractId: string,
+  method: string,
+  args: xdr.ScVal[],
+  source: string,
+  allowMock: boolean,
+): Promise<PreparedInvocation> {
+  if (allowMock && isMockRpc()) {
     recordMockCall({ kind: 'invoke', contractId, method }, recordArgs(args));
     return {
       // Not a real envelope: Playwright only checks that the SEP-7 URI is

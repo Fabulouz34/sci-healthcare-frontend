@@ -44,3 +44,10 @@ test('clinic marks the patient seen', async ({ page }) => {
     method: 'claim',
   });
 });
+
+test('clinic route shows not-found for an invalid address', async ({ page }) => {
+  await page.goto('/clinics/not-a-stellar-address');
+
+  await expect(page.getByText(/not found/i)).toBeVisible();
+  expect(await mockInvokes(page)).toHaveLength(0);
+});

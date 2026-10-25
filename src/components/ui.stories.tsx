@@ -68,7 +68,35 @@ export const FieldsAndCards: StoryObj = {
 };
 
 export const EmptyState: StoryObj = {
-  render: () => <Empty>No vouchers yet. Pick a clinic to fund care.</Empty>,
+  render: () => (
+    <Empty
+      title="No vouchers yet"
+      description="Pick a clinic and fund care to see your vouchers here."
+      action={<Button>Find a clinic</Button>}
+    />
+  ),
+};
+
+export const EmptyStates: StoryObj = {
+  render: () => (
+    <div className="space-y-3">
+      <Empty
+        title="No vouchers yet"
+        description="Pick a clinic and fund care to see your vouchers here."
+        action={<Button>Find a clinic</Button>}
+      />
+      <Empty
+        title="No services listed yet"
+        description="Publish the services your clinic offers so funders can pay for them."
+        action={<Button>List a service</Button>}
+      />
+      <Empty
+        title="No clinics match your search"
+        description="Try a different service or clear the filters."
+        action={<Button variant="ghost">Clear search</Button>}
+      />
+    </div>
+  ),
 };
 
 export const TooltipBasic: StoryObj = {
@@ -78,7 +106,7 @@ export const TooltipBasic: StoryObj = {
       <Tooltip content="The funder can dispute before the window closes. After it closes, anyone can release the payment.">
         <span
           tabIndex={0}
-          className="ms-1 inline-grid h-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px]"
+          className="ms-1 inline-grid h-w-4 w-4 cursor-help place-items-center rounded-full border border-[var(--color-line)] bg-[var(--color-canvas)] text-[10px]"
         >
           ?
         </span>
@@ -87,7 +115,7 @@ export const TooltipBasic: StoryObj = {
   ),
 };
 
-export const InfoTipHint: StoryObj = {
+export const InfoTisHint: StoryObj = {
   render: () => (
     <p className="text-sm">
       Funds are escrowed by the contract.

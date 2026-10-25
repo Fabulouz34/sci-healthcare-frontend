@@ -5,10 +5,11 @@ which file to open first, and which way the data moves. It is a map, not a
 reference — the code stays the source of truth, and every claim here points at
 the file that makes it true.
 
-The short version: **this app never holds a key and never writes through a
-backend.** Reads go to the indexer over HTTP; writes go from the browser
-straight to Soroban RPC after the user's wallet signs them. Everything else
-in this document is detail on those two sentences.
+The short version: **the wallet signs and the browser submits to Soroban RPC.**
+Reads go to the indexer over HTTP. Optional testnet fee sponsorship sends the
+signed envelope to a sign-only sponsor before browser submission; wallet keys
+remain in the wallet. See [sponsored fees](sponsored-fees.md) for this exception
+and its separate backend dependency.
 
 ## Contents
 
@@ -78,6 +79,11 @@ Two edges carry everything:
   indexer. The browser builds the transaction, simulates it, asks the wallet
   to sign it, and submits it to Soroban RPC. The indexer notices the event
   afterwards and the app re-reads to catch up.
+
+Optional sponsored funding inserts `stellar → sponsorship → sponsor` after
+wallet signing and before RPC submission. The sponsor returns a signed outer
+fee-bump envelope; the browser validates it and submits it. The indexer remains
+a read model, and the sponsor service must not submit on the browser's behalf.
 
 ## Pages
 
@@ -278,6 +284,12 @@ comes first on purpose: a transaction already known to fail must never reach
 a wallet prompt. `readContract` does the same call without a signature, from
 an unfunded account, so contract reads cost nothing.
 
+**`src/lib/sponsorship.ts`** — the opt-in testnet fee-bump client. Only a single
+`create_voucher` call may request it, within amount and fee caps. It checks the
+exact inner signed envelope and the sponsor signature before returning the
+fee bump to `stellar.ts`. Refusals never automatically fall back to user-paid
+fees. The backend independently enforces first-voucher eligibility and quotas.
+
 **`src/lib/wallet.tsx`** — the wallet. The app never holds, requests or
 transmits a secret key: the wallet kit signs, and the browser submits to RPC.
 The provider owns the connected address, the wallet name, the funding checks
@@ -438,7 +450,8 @@ Required: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_STELLAR_NETWORK`,
 `NEXT_PUBLIC_REGISTRY_CONTRACT_ID`, `NEXT_PUBLIC_VOUCHER_CONTRACT_ID`,
 `NEXT_PUBLIC_RECEIPT_CONTRACT_ID`, `NEXT_PUBLIC_USDC_CONTRACT_ID`.
 Optional: `NEXT_PUBLIC_FAUCET_CONTRACT_ID`, `NEXT_PUBLIC_USDC_ISSUER`,
-`NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_SENTRY_DSN`, `CSP_ENFORCE`.
+`NEXT_PUBLIC_PLAUSIBLE_DOMAIN`, `NEXT_PUBLIC_SENTRY_DSN`,
+`NEXT_PUBLIC_SPONSORED_FEES`, `CSP_ENFORCE`.
 
 `NEXT_PUBLIC_STELLAR_NETWORK` drives everything testnet-specific through one
 helper (`isTestnet`): the header badge, the faucet, the notices and the footer

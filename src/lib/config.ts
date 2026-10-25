@@ -1,3 +1,5 @@
+import { parseSep24Anchors } from './sep24-config';
+
 /**
  * Browser-visible configuration.
  *
@@ -18,6 +20,7 @@ function required(name: string, value: string | undefined): string {
 }
 
 export const config = {
+  sponsoredFees: process.env.NEXT_PUBLIC_SPONSORED_FEES === 'true',
   apiUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080',
   network: process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? 'testnet',
   rpcUrl:
@@ -34,6 +37,7 @@ export const config = {
   },
   /** Issuer of the demo USDC, needed to add the asset in a wallet. */
   usdcIssuer: process.env.NEXT_PUBLIC_USDC_ISSUER ?? '',
+  sep24Anchors: parseSep24Anchors(process.env.NEXT_PUBLIC_SEP24_ANCHORS),
   /**
    * Plausible domain for cookieless usage analytics. Empty disables it
    * entirely: no script tag is rendered and no events are sent.

@@ -71,6 +71,81 @@ export function isAnalyticsOptedOut(): boolean {
   return isDoNotTrackEnabled();
 }
 
+/**
+ * Report Core Web Vitals (LCP, INP, CLS) through the existing analytics,
+ * once per page view, and only when the visitor has not opted out.
+ *
+ * Uses the standard `PerformanceObserver` entry types. Browsers that do not
+ * support a metric simply never report it. The reporter is a no-op on the
+ * server and when analytics is opted out, so no request is made.
+ */
+export function reportCoreWebVitals(
+  send: (metric: { name: string; value: number }) => void,
+): () => void {
+  if (typeof window === 'undefined' || typeof PerformanceObserver === 'undefined') {
+    return () => {};
+  }
+  if (isAnalyticsOptedOut()) return () => {};
+
+  const reported = new Set<string>();
+  const observers: PerformanceObserver[] = [];
+
+  const report = (name: string, value: number) => {
+    if (reported.has(name) || !Number.isFinite(value)) return;
+    reported.add(name);
+    send({ name, value });
+  };
+
+  const observe = (type: string, handler: (entries: PerformanceEntryList) => void) => {
+    try {
+      const observer = new PerformanceObserver((list) => handler(list.getEntries()));
+      observer.observe({ type, buffered: true } as PerformanceObserverInit);
+      observers.push(observer);
+    } catch {
+      // Unsupported entry type; skip this metric.
+    }
+  };
+
+  // LCP: the last entry before the page is hidden or unloaded.
+  observe('largest-contentful-paint', (entries) => {
+    const last = entries[entries.length - 1] as PerformanceEntry & { startTime: number };
+    if (last) report('LCP', last.startTime);
+  });
+
+  // CLS: sum of layout shifts without recent input, reported on hide.
+  let cls = 0;
+  observe('layout-shift', (entries) => {
+    for (const entry of entries as Array<PerformanceEntry & { value: number; hadRecentInput: boolean }>) {
+      if (!entry.hadRecentInput) cls += entry.value;
+    }
+  });
+
+  // INP: the longest interaction duration observed, reported on hide.
+  let inp = 0;
+  observe('event', (entries) => {
+    for (const entry of entries as Array<PerformanceEntry & { duration: number }>) {
+      if (entry.duration > inp) inp = entry.duration;
+    }
+  });
+
+  const flush = () => {
+    report('CLS', cls);
+    report('INP', inp);
+  };
+
+  const onVisibility = () => {
+    if (document.visibilityState === 'hidden') flush();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('pagehide', flush);
+
+  return () => {
+    document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('pagehide', flush);
+    for (const observer of observers) observer.disconnect();
+  };
+}
+
 /** Store an explicit choice and tell every subscriber in this tab. */
 export function setAnalyticsOptOut(optedOut: boolean): void {
   if (typeof window === 'undefined') return;

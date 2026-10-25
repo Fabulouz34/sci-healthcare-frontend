@@ -4,9 +4,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { BrowserQRCodeReader } from '@zxing/browser';
-import QRCode from 'qrcode';
-
 import { formatDate, shortAddress } from '@/lib/amounts';
 import { api } from '@/lib/api';
 import { trackEvent } from '@/lib/analytics';
@@ -342,6 +339,8 @@ export default function MyPage() {
         key: secret,
         createdAt: new Date().toISOString(),
       });
+      // QR generation is optional; keep it out of the initial dashboard bundle.
+      const { default: QRCode } = await import('qrcode');
       const value = await QRCode.toDataURL(payload, {
         width: 300,
         margin: 1,
@@ -366,7 +365,11 @@ export default function MyPage() {
     const start = async () => {
       setQrBusy(true);
       try {
+        // Load the camera decoder only after the user opens the scanner.
+        const { BrowserQRCodeReader } = await import('@zxing/browser');
+        if (cancelled) return;
         const devices = await BrowserQRCodeReader.listVideoInputDevices();
+        if (cancelled) return;
         if (devices.length === 0) {
           throw new Error('No camera is available on this device.');
         }
@@ -376,6 +379,10 @@ export default function MyPage() {
           audio: false,
         });
 
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         const reader = new BrowserQRCodeReader();
         cameraElement = videoRef.current;
         if (!cameraElement) {
@@ -403,6 +410,7 @@ export default function MyPage() {
             }
           },
         );
+        if (cancelled) void controls.stop();
       } catch (err) {
         if (!cancelled) {
           setQrBusy(false);

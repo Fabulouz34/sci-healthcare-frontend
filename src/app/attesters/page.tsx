@@ -7,6 +7,7 @@ import { explorerAccount } from '@/lib/config';
 import { useAttesters } from '@/lib/hooks';
 import { CopyValue } from '@/components/CopyValue';
 import { Alert, Card, Empty, ExplorerLink } from '@/components/ui';
+import { SkeletonRow } from '@/components/Skeleton';
 
 export default function AttestersPage() {
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -42,7 +43,11 @@ export default function AttestersPage() {
       {error && <Alert>{error}</Alert>}
 
       {isLoading && (
-        <p className="text-sm text-[var(--color-ink-soft)]">Loading attesters…</p>
+        <Card className="space-y-4 p-5">
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
       )}
 
       {!isLoading && attesters.length === 0 && (
