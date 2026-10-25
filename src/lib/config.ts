@@ -1,3 +1,5 @@
+import { parseSep24Anchors } from './sep24-config';
+
 /**
  * Browser-visible configuration.
  *
@@ -35,6 +37,7 @@ export const config = {
   },
   /** Issuer of the demo USDC, needed to add the asset in a wallet. */
   usdcIssuer: process.env.NEXT_PUBLIC_USDC_ISSUER ?? '',
+  sep24Anchors: parseSep24Anchors(process.env.NEXT_PUBLIC_SEP24_ANCHORS),
   /**
    * Plausible domain for cookieless usage analytics. Empty disables it
    * entirely: no script tag is rendered and no events are sent.

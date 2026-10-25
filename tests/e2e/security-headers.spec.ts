@@ -79,7 +79,11 @@ test('the policy names only the origins the app needs', async ({ page }) => {
   // Map tiles, and the analytics origin the test build enables.
   expect(csp).toContain('https://tile.openstreetmap.org');
   expect(csp).toContain('https://plausible.io');
+  expect(csp).toContain('https://anchor.example');
+  expect(csp).toContain('https://*.anchor.example');
 
+  // Nothing is open by default; the only wildcard is scoped to the
+  // explicitly configured anchor domain and its subdomains.
   // Trusted Types (#147): the DOM sinks that script-src cannot see are
   // covered by the same policy, report-only until CSP_ENFORCE=1.
   expect(csp).toContain("require-trusted-types-for 'script'");
@@ -93,7 +97,7 @@ test('the policy names only the origins the app needs', async ({ page }) => {
   expect(csp).toContain("object-src 'none'");
   expect(csp).toContain("base-uri 'self'");
   expect(csp).toContain("form-action 'self'");
-  expect(csp).not.toContain('*');
+  expect(csp).not.toMatch(/(?:^|[;\s])\*(?=[;\s]|$)/);
 
   // Companion headers.
   expect(headers['x-frame-options']).toBe('DENY');

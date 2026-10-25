@@ -400,6 +400,14 @@ describe('useProviders', () => {
     expect(result.current.providers).toEqual([]);
   });
 
+  it('skips the request when the caller passes null (#202 regression)', async () => {
+    const { result } = renderHook(() => useProviders(null));
+
+    await act(async () => {});
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(result.current.providers).toEqual([]);
+  });
+
   it('refetches after a provider write invalidates the directory', async () => {
     let reads = 0;
     respond(() => {
