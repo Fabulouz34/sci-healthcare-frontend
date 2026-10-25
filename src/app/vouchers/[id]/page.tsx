@@ -75,7 +75,6 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
     }
   }
 
-  const { voucher: v, error, rawError, mutate } = useVoucher(id);
   const { voucher: v, error, rawError, mutate } = useVoucher(validId ? id : undefined);
   // Per-step transaction hashes (#18). An indexer without the events
   // endpoint (backend #13) yields an empty list and the history renders

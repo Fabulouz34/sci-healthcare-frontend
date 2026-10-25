@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getAccountSpendableBalance, simulateContractFee } from './stellar';
-import { getAccountSpendableBalance, usdcTrustlineFromAccount } from './stellar';
+import {
+  getAccountSpendableBalance,
+  simulateContractFee,
+  usdcTrustlineFromAccount,
+} from './stellar';
 
 const ISSUER = 'GCKX5KAFVF7GLFZ3JWQGJ4F62RYYZU67PI3TACBGKVPJ73JELMI3L4KR';
 const OTHER_ISSUER = 'GA7QYNF7SOWQ3GLR2BGMZEHXAVIRZA4KVWLTJJFC7MGXUA74P7UJVAAA';
