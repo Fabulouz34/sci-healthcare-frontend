@@ -42,6 +42,15 @@ const mocks = vi.hoisted(() => {
       });
       return { hash: 'hash', returnValue: null };
     }),
+    simulateContractFee: vi.fn(async (...args: unknown[]) => {
+      recorded.push({
+        kind: 'simulate',
+        contractId: args[0] as string,
+        method: args[1] as string,
+        args: args[2],
+      });
+      return 100_000n;
+    }),
     readContract: vi.fn(async (...args: unknown[]) => {
       recorded.push({
         kind: 'read',
@@ -64,6 +73,7 @@ vi.mock('./stellar', async (importOriginal) => {
     invokeContract: mocks.invokeContract,
     invokeContractBatch: mocks.invokeContractBatch,
     invokePathPaymentThenContract: mocks.invokePathPaymentThenContract,
+    simulateContractFee: mocks.simulateContractFee,
     readContract: mocks.readContract,
   };
 });
@@ -146,6 +156,16 @@ describe('protocol contract argument encoding', () => {
     let index = mocks.recorded.length;
     await voucher.create(createParams, SIGN);
     expectBindingEncoding(index++, 'create_voucher', voucherBinding.spec, createBindingArgs, 'invoke');
+
+    index = mocks.recorded.length;
+    await expect(voucher.estimateCreateFee(createParams)).resolves.toBe(100_000n);
+    expectBindingEncoding(
+      index,
+      'create_voucher',
+      voucherBinding.spec,
+      createBindingArgs,
+      'simulate',
+    );
 
     index = mocks.recorded.length;
     await voucher.createWithXlmSwap({ ...createParams, swapAmount: 10_000_000n }, SIGN);

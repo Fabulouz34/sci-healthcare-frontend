@@ -15,6 +15,7 @@ import {
   invokePathPaymentThenContract,
   prepareContractInvocation,
   readContract,
+  simulateContractFee,
   type ContractCall,
   type PreparedInvocation,
   type SignFn,
@@ -103,6 +104,16 @@ export const voucher = {
       params.funder,
       sign,
       sponsored,
+    );
+  },
+
+  /** Simulates create_voucher without signing or submitting it. */
+  async estimateCreateFee(params: CreateVoucherParams): Promise<bigint> {
+    return simulateContractFee(
+      config.contracts.voucher,
+      'create_voucher',
+      createVoucherArgs(params),
+      params.funder,
     );
   },
 

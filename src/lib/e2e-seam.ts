@@ -15,9 +15,7 @@
  */
 
 export type MockRpcCall = {
-  /** `change_trust` is the classic USDC trustline operation (#1), not a
-   *  contract call: `contractId` is the USDC contract the line backs. */
-  kind: 'invoke' | 'read' | 'change_trust';
+  kind: 'invoke' | 'read' | 'simulate' | 'change_trust';
   contractId: string;
   method: string;
 };
