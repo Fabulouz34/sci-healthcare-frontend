@@ -79,10 +79,10 @@ test('the manifest and its icons make the app installable', async ({ page }) => 
   for (const icon of manifest.icons) {
     const response = await page.request.get(icon.src);
     expect(response.status(), icon.src).toBe(200);
-    expect(response.headers()['content-type']).toContain('image/png');
+    expect(response.headers()['content-type']).toContain(icon.type);
   }
 
-  // A PNG that does not decode is not an icon: check the real dimensions the
+  // An image that does not decode is not an icon: check the real dimensions the
   // generator claims, in the browser that would have to render them.
   const decoded = await page.evaluate(async (sources: string[]) => {
     const load = (src: string) =>
@@ -95,7 +95,10 @@ test('the manifest and its icons make the app installable', async ({ page }) => 
     return Promise.all(sources.map(load));
   }, manifest.icons.map((icon) => icon.src));
 
-  expect(Object.fromEntries(decoded)).toEqual({
+  const dimensions = Object.fromEntries(decoded);
+  expect(dimensions['/icons/icon.svg']).toBeGreaterThan(0);
+  delete dimensions['/icons/icon.svg'];
+  expect(dimensions).toEqual({
     '/icons/icon-192.png': 192,
     '/icons/icon-512.png': 512,
     '/icons/icon-maskable-512.png': 512,
