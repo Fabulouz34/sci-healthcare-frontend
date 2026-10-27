@@ -52,7 +52,8 @@ export default function VoucherPage({ params }: { params: Promise<{ id: string }
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(voucherShareMessage());
+      const url = typeof window !== 'undefined' ? window.location.href : '';
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
