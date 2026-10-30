@@ -181,14 +181,18 @@ export function useProviderVouchers(
 
 /**
  * Hook for fetching and caching provider directory (#63).
+ *
+ * `null` skips the request, like `useVouchers`: a caller that only needs the
+ * directory once something is open (the command palette) must not make every
+ * page in the app fetch it.
  */
 export function useProviders(
-  params?: { status?: 'Pending' | 'Active' | 'Suspended'; country?: string; q?: string },
+  params?: { status?: 'Pending' | 'Active' | 'Suspended'; country?: string; q?: string } | null,
   config?: SWRConfiguration<{ total: number; providers: Provider[] }>,
 ) {
   const { data, error, isLoading, isValidating, mutate } = useSWR(
-    ['providers', params ?? {}],
-    () => api.providers(params),
+    params === null ? null : ['providers', params ?? {}],
+    () => api.providers(params ?? undefined),
     config,
   );
 

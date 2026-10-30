@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import type { NextConfig } from 'next';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import bundleAnalyzer from '@next/bundle-analyzer';
+import { parseSep24Anchors } from './src/lib/sep24-config';
 
 import { contentSecurityPolicy, contentSecurityPolicyHeaderName } from './src/lib/csp';
 
@@ -126,6 +127,18 @@ function configProblems(env: NodeJS.ProcessEnv): string[] {
       problems.push(
         `${name} is not a contract id ("${value}") — it must be C followed by ` +
           '55 base32 characters, as printed by the deployment script.',
+      );
+    }
+  }
+
+  if (env.NEXT_PUBLIC_SEP24_ANCHORS?.trim()) {
+    try {
+      parseSep24Anchors(env.NEXT_PUBLIC_SEP24_ANCHORS);
+    } catch (error) {
+      problems.push(
+        error instanceof Error
+          ? error.message
+          : 'NEXT_PUBLIC_SEP24_ANCHORS is invalid.',
       );
     }
   }

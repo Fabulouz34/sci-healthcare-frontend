@@ -45,8 +45,11 @@ export function CommandPalette() {
   const router = useRouter();
   const { address } = useWallet();
   const { isAdmin } = useAdminAccess(address);
-  const { providers } = useProviders({ status: 'Active' });
   const [open, setOpen] = useState(false);
+  // The palette is mounted in the root layout, so fetching here on mount
+  // would make every page in the app read the clinic directory. Clinic
+  // results are only ever shown while it is open.
+  const { providers } = useProviders(open ? { status: 'Active' } : null);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

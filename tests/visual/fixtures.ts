@@ -209,6 +209,18 @@ export async function mockApi(page: Page): Promise<void> {
           providers: [{ ...providersList.providers[0], status: 'Pending' }],
         });
       }
+      // /providers/<address>/stats — the clinic desk's earnings header. It
+      // has to be answered explicitly: the directory envelope below carries
+      // no settledValue, and formatting it would throw instead of render.
+      if (parts.length === 3 && parts[2] === 'stats') {
+        return json({
+          ...providerDetail,
+          vouchers: 0,
+          byStatus: { Funded: 0, Claimed: 0, Attested: 0, Settled: 0, Disputed: 0, Refunded: 0 },
+          settledVouchers: 0,
+          settledValue: '0',
+        });
+      }
       // /providers/<address> — the last segment is the address.
       if (parts.length === 2) {
         const found = providersList.providers.find((p) => p.address === parts[1]);

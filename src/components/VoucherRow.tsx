@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 
 import { api, type Voucher } from '@/lib/api';
-import { formatDate, formatUsdc, timeUntil, timeSince } from '@/lib/amounts';
+import { formatDate, formatUsdc, timeUntil, timeSince, toAmountInput } from '@/lib/amounts';
 import { trackEvent, type AnalyticsEvent } from '@/lib/analytics';
 import { explorerTx } from '@/lib/config';
 import { DISPUTE_REASONS, disputeReasonLabel, type DisputeReasonCode } from '@/lib/disputes';
@@ -50,6 +50,7 @@ export function VoucherRow({
   onDone,
   summary = true,
   now: nowProp,
+  disabled = false,
   ref,
   requirePatientMatch = false,
 }: {
@@ -60,6 +61,11 @@ export function VoucherRow({
   summary?: boolean;
   /** Optional current time in ms (e.g., from parent using useNow). Falls back to internal useNow. */
   now?: number;
+  /**
+   * True while the page is settling several vouchers: the batch is already
+   * writing, so a second write on the same row would only fail.
+   */
+  disabled?: boolean;
   ref?: Ref<VoucherRowHandle>;
   /**
    * Hold the claim button until the patient's reference and key match this
@@ -161,6 +167,12 @@ export function VoucherRow({
     },
   }));
 
+  const fundAgainParams = new URLSearchParams({
+    service: String(v.serviceCode),
+    amount: toAmountInput(v.amount),
+  });
+  const fundAgainHref = `/clinics/${encodeURIComponent(v.provider.address)}?${fundAgainParams}`;
+
   return (
     // Without the summary, the first hint or button row sits at the top.
     <Card className={summary ? 'p-5' : 'p-5 [&>:first-child]:mt-0'}>
@@ -193,6 +205,13 @@ export function VoucherRow({
           </div>
         </div>
       )}
+
+      <Link
+        href={fundAgainHref}
+        className="mt-3 inline-flex items-center rounded-md border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium text-[var(--color-brand)] transition hover:bg-[var(--color-canvas)]"
+      >
+        Fund again
+      </Link>
 
       {v.status === 'Attested' && v.disputeDeadline && !v.isSettleable && (
         <p className="mt-3 text-xs text-[var(--color-ink-soft)]">
@@ -243,6 +262,7 @@ export function VoucherRow({
               key={a}
               variant={a === 'dispute' ? 'danger' : a === 'settle' ? 'primary' : 'ghost'}
               disabled={
+                disabled ||
                 busy !== null ||
                 reconciling !== null ||
                 (a === 'claim' && requirePatientMatch && !patientVerified)
@@ -324,7 +344,7 @@ export function VoucherRow({
           <>
             <Button
               variant="danger"
-              disabled={busy !== null}
+              disabled={disabled || busy !== null}
               onClick={() => void run('dispute')}
             >
               {busy === 'dispute' ? 'Confirming…' : 'Open dispute'}
@@ -373,7 +393,7 @@ export function VoucherRow({
         actions={
           <>
             <Button
-              disabled={busy !== null}
+              disabled={disabled || busy !== null}
               onClick={() => void run('attest')}
             >
               {busy === 'attest' ? 'Confirming…' : 'Confirm'}

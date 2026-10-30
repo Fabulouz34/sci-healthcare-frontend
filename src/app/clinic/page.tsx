@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 
 import { formatUsdc, toAmountInput, toBaseUnits } from '@/lib/amounts';
+import { trackEvent } from '@/lib/analytics';
+import { settleableVouchers } from '@/lib/batch-settle';
 import type { VoucherStatus } from '@/lib/api';
 import { monthlyEarnings, summariseEarnings } from '@/lib/clinic-earnings';
 import { explorerTx } from '@/lib/config';
@@ -16,7 +18,7 @@ import {
   useProviderVouchers,
   useVouchers,
 } from '@/lib/hooks';
-import { registry, type ProviderStanding } from '@/lib/protocol';
+import { registry, voucher as protocol, type ProviderStanding } from '@/lib/protocol';
 import {
   VOUCHER_STATUSES,
   filterVouchers,
@@ -27,7 +29,8 @@ import { ClinicChecklist } from '@/components/ClinicChecklist';
 import { QrScannerModal } from '@/components/QrScannerModal';
 import { VoucherRow } from '@/components/VoucherRow';
 import { useToast } from '@/components/Toast';
-import { Button, Card, Empty, ExplorerLink } from '@/components/ui';
+import { Alert, Button, Card, Empty, ExplorerLink } from '@/components/ui';
+import { Sep24Cashout } from '@/components/Sep24Cashout';
 import { Skeleton, SkeletonRow } from '@/components/Skeleton';
 
 import { useLocaleContext } from '@/i18n/LocaleContext';
@@ -122,6 +125,18 @@ export default function ClinicDeskPage() {
   const [statusFilter, setStatusFilter] = useState<VoucherStatus | null>(null);
   const [search, setSearch] = useState('');
 
+  // Settling every due voucher in one go, with progress and a summary.
+  const [settleAllBusy, setSettleAllBusy] = useState(false);
+  const [settleProgress, setSettleProgress] = useState<{
+    done: number;
+    total: number;
+    currentId: string;
+  } | null>(null);
+  const [settleSummary, setSettleSummary] = useState<{
+    settled: string[];
+    failed: { id: string; error: string }[];
+  } | null>(null);
+
   // SWR cached reads (#63)
   const { provider, mutate: mutateProvider } = useProvider(address);
   const { vouchers, mutate: mutateVouchers } = useVouchers(
@@ -172,6 +187,44 @@ export default function ClinicDeskPage() {
   };
 
   const services = (provider?.services ?? []).filter((s) => s.active !== false);
+
+  // Vouchers past their dispute window, in list order. Everything else is
+  // left alone: a voucher still inside its window cannot be settled, and a
+  // batch must not try.
+  const settleable = settleableVouchers(vouchers);
+
+  async function settleAll() {
+    if (!address) return void connect();
+    const due = settleableVouchers(vouchers);
+    if (due.length === 0) return;
+
+    setSettleAllBusy(true);
+    setSettleSummary(null);
+    setSettleProgress({ done: 0, total: due.length, currentId: due[0].id });
+    try {
+      const { settled, failed } = await protocol.settleMany(
+        address,
+        due.map((v) => v.id),
+        signTransaction,
+        (done, total, currentId) => setSettleProgress({ done, total, currentId }),
+      );
+      // One funnel event per voucher actually released, names only.
+      settled.forEach(() => trackEvent('voucher_settled'));
+      setSettleSummary({
+        settled,
+        failed: failed.map((f) => ({
+          id: f.id,
+          error: humaniseError(f.error, undefined, locale),
+        })),
+      });
+    } catch (err) {
+      toast.error(humaniseError(err, undefined, locale));
+    } finally {
+      setSettleProgress(null);
+      setSettleAllBusy(false);
+      refreshAll();
+    }
+  }
 
   async function submit(fn: () => Promise<{ hash: string }>, table = REGISTRY_ERRORS) {
     if (!address) return void connect();
@@ -607,8 +660,81 @@ export default function ClinicDeskPage() {
         </Card>
       )}
 
+      {standing === 'Active' && provider?.country && (
+        <Sep24Cashout
+          account={address}
+          country={provider.country}
+          signTransaction={signTransaction}
+        />
+      )}
+
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">{t('clinic.incomingVouchers')}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">{t('clinic.incomingVouchers')}</h2>
+          {settleable.length > 0 && (
+            <Button
+              disabled={settleAllBusy}
+              onClick={() => void settleAll()}
+            >
+              {settleAllBusy
+                ? t('clinic.settlingCount', {
+                    done: settleProgress?.done ?? 0,
+                    total: settleProgress?.total ?? settleable.length,
+                  })
+                : t('clinic.settleAll', { count: settleable.length })}
+            </Button>
+          )}
+        </div>
+        {settleProgress && (
+          <div
+            role="status"
+            className="rounded-lg border border-[var(--color-line)] bg-[var(--color-surface)] p-3 text-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--color-ink-soft)]">
+              <span>{t('clinic.settlingVoucher', { id: settleProgress.currentId })}</span>
+              <span className="mono font-medium">
+                {t('clinic.settledOf', {
+                  done: settleProgress.done,
+                  total: settleProgress.total,
+                })}
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={settleProgress.total}
+              aria-valuenow={settleProgress.done}
+              aria-label={t('clinic.settleAllProgress')}
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-line)]"
+            >
+              <div
+                className="h-full bg-[var(--color-brand)] transition-all duration-300"
+                style={{
+                  width: `${(settleProgress.done / settleProgress.total) * 100}%`,
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {settleSummary && (
+          <div className="space-y-2">
+            {settleSummary.settled.length > 0 && (
+              <Alert kind="success">
+                {t('clinic.settledSummary')}{' '}
+                {settleSummary.settled.map((id) => `#${id}`).join(', ')}.
+              </Alert>
+            )}
+            {settleSummary.failed.length > 0 && (
+              <Alert>
+                {t('clinic.settleFailedSummary')}{' '}
+                {settleSummary.failed
+                  .map((f) => `#${f.id} (${f.error})`)
+                  .join(', ')}
+                .
+              </Alert>
+            )}
+          </div>
+        )}
         {vouchers.length === 0 && <Empty>{t('clinic.noIncoming')}</Empty>}
         {vouchers.length > 0 && (
           <Card className="space-y-3 p-4">
@@ -685,6 +811,7 @@ export default function ClinicDeskPage() {
               v={v}
               actions={['claim', 'settle']}
               onDone={refreshAll}
+              disabled={settleAllBusy}
               requirePatientMatch
             />
           ))}
