@@ -1,0 +1,18 @@
+{
+  // Pins Codespaces to the Node version in .nvmrc. Without this the default
+  // image picks its own Node, which is the usual reason `npm ci` fails here
+  // but passes in CI.
+  "name": "sci-healthcare-frontend",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+
+  "postCreateCommand": "npm ci",
+
+  // 3000 is `next dev`; 6006 is Storybook.
+  "forwardPorts": [3000, 6006],
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint"]
+    }
+  }
+}

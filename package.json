@@ -4,6 +4,9 @@
   "private": true,
   "description": "Web app for the SCI Healthcare care-voucher protocol on Stellar",
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.12"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
