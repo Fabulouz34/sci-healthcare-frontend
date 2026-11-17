@@ -43,6 +43,7 @@ import { CopyValue } from '@/components/CopyValue';
 import { useToast } from '@/components/Toast';
 import { Alert, Button, Card, ExplorerLink, Field } from '@/components/ui';
 import { SkeletonDetail } from '@/components/Skeleton';
+import { FavouriteButton } from '@/components/FavouriteButton';
 
 /**
  * Registry status in the words a funder reads. A funder choosing a clinic
@@ -542,11 +543,14 @@ export default function ClinicPage({
                 <CopyValue value={provider.address} chars={8} label="clinic address" />
               </p>
             </div>
-            <span
-              className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${status.className}`}
-            >
-              {status.label}
-            </span>
+            <div className="flex items-center gap-2">
+              <FavouriteButton address={provider.address} clinicName={provider.name} />
+              <span
+                className={`inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${status.className}`}
+              >
+                {status.label}
+              </span>
+            </div>
           </div>
 
           {(registeredAt || showSettled) && (

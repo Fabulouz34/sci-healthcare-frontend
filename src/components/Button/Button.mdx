@@ -1,0 +1,26 @@
+import { Meta, Canvas, Controls } from '@storybook/blocks';
+import * as ButtonStories from './Button.stories';
+
+<Meta of={ButtonStories} />
+
+# Button
+
+Buttons express what action will occur when the user interacts with them. They alert users to actions they can take across the platform.
+
+## Usage Guidelines
+* **Primary Buttons:** Reserve for the main action on a screen or container (e.g., "Save", "Submit"). Use only one primary button per visual grouping.
+* **Secondary Buttons:** Use for secondary or alternative actions (e.g., "Cancel", "Back").
+* **Destructive Buttons:** Use distinct visual styling (red tone) for actions that delete data or cannot be undone.
+
+## Do's and Don'ts
+
+| Do 🟢 | Don't 🔴 |
+| :--- | :--- |
+| Use clear, action-oriented text like "Save Changes". | Use generic terms like "Click Here" or "OK". |
+| Keep button labels short (1–3 words). | Wrap text onto multiple lines inside a button. |
+| Disable or show a loading indicator during async operations. | Leave buttons active during active requests to prevent double submissions. |
+
+## Accessibility Notes
+* **Keyboard Navigation:** Ensure buttons are reachable via `Tab` and activated using `Space` or `Enter`.
+* **Icon-Only Buttons:** Always provide an explicit `aria-label` attribute (e.g., `aria-label="Close dialog"`).
+* **Color Contrast:** Text and background color contrast must meet at least **4.5:1** for standard text.

@@ -5,7 +5,13 @@
   "name": "sci-healthcare-frontend",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
 
-  "postCreateCommand": "npm ci",
+  // The GitHub CLI, for `gh repo fork` and `gh pr create` from a codespace.
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // .env.local from the example, so `npm run dev` starts without setup.
+  "postCreateCommand": "npm ci && ([ -f .env.local ] || cp .env.example .env.local)",
 
   // 3000 is `next dev`; 6006 is Storybook.
   "forwardPorts": [3000, 6006],

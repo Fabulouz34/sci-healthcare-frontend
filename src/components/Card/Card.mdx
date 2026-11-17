@@ -1,0 +1,24 @@
+import { Meta, Canvas, Controls } from '@storybook/blocks';
+import * as CardStories from './Card.stories';
+
+<Meta of={CardStories} />
+
+# Card
+
+Cards group related information and actions into a single, structured container.
+
+## Usage Guidelines
+* Use cards to present bite-sized info (such as patient stats, lab summaries, or dashboard metrics).
+* Keep content inside a card focused on a single topic or entity.
+* Interactive cards should have a clear hover and focus state across the entire clickable surface.
+
+## Do's and Don'ts
+
+| Do 🟢 | Don't 🔴 |
+| :--- | :--- |
+| Group related sub-components (Header, Body, Footer) consistently. | Overcrowd cards with complex forms or nested tables. |
+| Maintain consistent padding and shadow elevation across cards in a grid. | Mix different card hierarchy styles arbitrarily in the same layout. |
+
+## Accessibility Notes
+* **Structure:** Use semantic headings (`<h3>`, `<h4>`) inside card titles to maintain proper document outline hierarchy.
+* **Clickable Surface:** If the whole card is interactive, wrap the card or title cleanly to avoid duplicate screen reader navigation paths.

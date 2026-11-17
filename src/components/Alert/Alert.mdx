@@ -1,0 +1,25 @@
+import { Meta, Canvas, Controls } from '@storybook/blocks';
+import * as AlertStories from './Alert.stories';
+
+<Meta of={AlertStories} />
+
+# Alert
+
+Alerts provide brief, timely feedback about an outcome or convey critical system messages.
+
+## Usage Guidelines
+* **Success:** Confirm completed tasks (e.g., "Patient record successfully updated").
+* **Warning:** Warn users about potential issues before proceeding (e.g., "Unsaved changes will be lost").
+* **Error:** Notify users of critical issues or failed validations requiring intervention.
+* **Info:** Display general context or helpful tips.
+
+## Do's and Don't
+
+| Do 🟢 | Don't 🔴 |
+| :--- | :--- |
+| Place alerts near the relevant content or at the top of the viewport. | Overuse alerts for non-essential information. |
+| Include actionable remedies in error alerts. | Use vague error messages like "Something went wrong". |
+
+## Accessibility Notes
+* **Screen Readers:** Use appropriate `role="alert"` for assertive messages or `role="status"` for non-disruptive feedback.
+* **Color Reliance:** Combine status colors with recognizable icons and text so information is not conveyed by color alone.

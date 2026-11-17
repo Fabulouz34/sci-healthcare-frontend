@@ -3,7 +3,9 @@
 The web app for funders, clinics and attesters. Next.js 16, React 19,
 Tailwind 4, TypeScript.
 
-# # Setup
+By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Setup
 
 Use Node 22 (`nvm use` reads `.nvmrc`). Its bundled npm 10 is what CI runs;
 a lockfile written by npm 11 drops entries npm 10 requires and fails `npm ci`.
@@ -73,6 +75,33 @@ The sponsor never receives a wallet key and must not submit transactions.
   fails on click.
 - Prefer explaining the mechanism over reassuring the user. "Dispute window
   closes in 3h — settles after that" beats "Processing".
+
+## Forking, Codespaces and pushing
+
+Only maintainers can push to this repository, and `main` takes changes through
+pull requests only. If `git push` answers `403` or `Permission denied`, the
+push is going to `Godgift-care/sci-healthcare-frontend` instead of your fork.
+
+1. Fork the repository, then clone **your fork**
+   (`gh repo fork Godgift-care/sci-healthcare-frontend --clone` does both).
+2. Create a branch, commit, and `git push -u origin <branch>`.
+3. Open a pull request against `main`.
+
+**GitHub Codespaces.** The repository has a [dev container](.devcontainer/), so
+a codespace starts with the toolchain CI uses and the dependencies installed.
+Create it from your fork (**Code → Codespaces** on your fork's page) and
+`git push` works as usual. A codespace created from this repository without
+write access cannot push here; GitHub offers to fork it for you on the first
+push, or run `gh repo fork --remote` and push to the new `origin`.
+
+A codespace cannot push changes to `.github/workflows/`: its token has no
+workflow permission. Make those changes from a local clone.
+
+Never commit a `.env` file, and never commit files you did not write. If
+`git status` shows changes you do not recognise (an `init` file, edited
+`package.json` scripts, a changed `.gitignore`, config files with one very long
+line), stop and check your machine before pushing: see
+[Security scan](#security-scan).
 
 ## Commits and PRs
 

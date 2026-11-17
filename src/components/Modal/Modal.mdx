@@ -1,0 +1,24 @@
+import { Meta, Canvas, Controls } from '@storybook/blocks';
+import * as ModalStories from './Modal.stories';
+
+<Meta of={ModalStories} />
+
+# Modal
+
+Modals interrupt the user workflow to present critical information or request an immediate decision.
+
+## Usage Guidelines
+* Use for quick sub-tasks, confirmations, or critical workflows that require explicit user action.
+* Modals should always have a clear title, a primary action, and a secondary "Cancel" or "Close" option.
+
+## Do's and Don'ts
+
+| Do 🟢 | Don't 🔴 |
+| :--- | :--- |
+| Provide an explicit exit button (e.g., 'X' icon or 'Cancel'). | Open modals spontaneously without user initiation. |
+| Keep content concise to avoid internal modal scrollbars whenever possible. | Nest modals inside other modals. |
+
+## Accessibility Notes
+* **Focus Trap:** Focus must be trapped within the modal while open and restored to the triggering element upon closure.
+* **Escape Key:** Pressing the `Escape` key must close the modal.
+* **ARIA Attributes:** Ensure the modal container includes `aria-modal="true"` and is linked via `aria-labelledby` to its title.

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { providerLocation, type Provider } from '@/lib/api';
 import { formatUsdc } from '@/lib/amounts';
 import { clinicCountries, filterClinics, parseCountry } from '@/lib/clinic-filters';
+import { useFavouriteClinics } from '@/lib/favourites';
 import { useLiveUpdates, useProviders, useStats } from '@/lib/hooks';
 import { useLowBandwidth } from '@/lib/low-bandwidth';
 import { DemoTour } from '@/components/DemoTour';
@@ -34,6 +35,7 @@ type View = 'list' | 'map';
 export default function HomePage() {
   const [view, setView] = useState<View>('list');
   const lowBandwidth = useLowBandwidth();
+  const favourites = useFavouriteClinics();
   useLiveUpdates();
 
   // The map is the heaviest thing on this page: a Leaflet chunk plus one
@@ -76,10 +78,19 @@ export default function HomePage() {
   const countries = useMemo(() => clinicCountries(providers), [providers]);
   const searchTerm = searchParams.get('q') ?? '';
   const countryFilter = parseCountry(searchParams.get('country'), countries);
-  const visible = useMemo(
+  const filtered = useMemo(
     () => filterClinics(providers, { q: searchTerm, country: countryFilter }),
     [providers, searchTerm, countryFilter],
   );
+  const visible = useMemo(() => {
+    if (favourites.length === 0) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aFav = favourites.includes(a.address);
+      const bFav = favourites.includes(b.address);
+      if (aFav === bFav) return 0;
+      return aFav ? -1 : 1;
+    });
+  }, [filtered, favourites]);
   const filtering = searchTerm.trim().length > 0 || countryFilter !== null;
 
   // Memoized so the map is not torn down and rebuilt on every render: the
